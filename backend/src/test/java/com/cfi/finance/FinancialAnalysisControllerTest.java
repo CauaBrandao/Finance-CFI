@@ -111,4 +111,71 @@ class FinancialAnalysisControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.diagnostico.situacao").value("EXCELENTE"));
     }
+
+    @Test
+    @DisplayName("POST /financial-analysis/full deve retornar 429 Too Many Requests quando RateLimitExceededException ocorrer")
+    void shouldReturn429WhenRateLimitExceeded() throws Exception {
+        Mockito.when(analysisService.getFullAnalysis(any(FinancialContextDTO.class)))
+                .thenThrow(new com.cfi.finance.exception.RateLimitExceededException("Limite de taxa (Rate Limit) do Gemini excedido. Tente novamente em instantes."));
+
+        FinancialContextDTO requestContext = new FinancialContextDTO(
+                "2026-09",
+                BigDecimal.valueOf(3000),
+                BigDecimal.valueOf(2500),
+                BigDecimal.valueOf(500),
+                16.7, 83.33, 30, null, null, null, null, null
+        );
+
+        mockMvc.perform(post("/financial-analysis/full")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestContext)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.status").value(429))
+                .andExpect(jsonPath("$.error").value("RATE_LIMIT_EXCEEDED"))
+                .andExpect(jsonPath("$.message").value("Limite de taxa (Rate Limit) do Gemini excedido. Tente novamente em instantes."));
+    }
+
+    @Test
+    @DisplayName("POST /financial-analysis/full deve retornar 503 Service Unavailable quando AiServiceUnavailableException ocorrer")
+    void shouldReturn503WhenAiUnavailable() throws Exception {
+        Mockito.when(analysisService.getFullAnalysis(any(FinancialContextDTO.class)))
+                .thenThrow(new com.cfi.finance.exception.AiServiceUnavailableException("Serviço do Google Gemini temporariamente indisponível (HTTP 503)."));
+
+        FinancialContextDTO requestContext = new FinancialContextDTO(
+                "2026-09",
+                BigDecimal.valueOf(3000),
+                BigDecimal.valueOf(2500),
+                BigDecimal.valueOf(500),
+                16.7, 83.33, 30, null, null, null, null, null
+        );
+
+        mockMvc.perform(post("/financial-analysis/full")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestContext)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.error").value("AI_SERVICE_UNAVAILABLE"));
+    }
+
+    @Test
+    @DisplayName("POST /financial-analysis/full deve retornar 504 Gateway Timeout quando AiTimeoutException ocorrer")
+    void shouldReturn504WhenAiTimeout() throws Exception {
+        Mockito.when(analysisService.getFullAnalysis(any(FinancialContextDTO.class)))
+                .thenThrow(new com.cfi.finance.exception.AiTimeoutException("Tempo limite excedido ao aguardar resposta do Google Gemini (35 segundos)."));
+
+        FinancialContextDTO requestContext = new FinancialContextDTO(
+                "2026-09",
+                BigDecimal.valueOf(3000),
+                BigDecimal.valueOf(2500),
+                BigDecimal.valueOf(500),
+                16.7, 83.33, 30, null, null, null, null, null
+        );
+
+        mockMvc.perform(post("/financial-analysis/full")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestContext)))
+                .andExpect(status().isGatewayTimeout())
+                .andExpect(jsonPath("$.status").value(504))
+                .andExpect(jsonPath("$.error").value("GATEWAY_TIMEOUT"));
+    }
 }

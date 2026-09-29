@@ -91,11 +91,12 @@ public class GeminiClient {
             return extractJsonFromGeminiResponse(rawResponse);
 
         } catch (ResourceAccessException ex) {
-            log.warn("Timeout ou falha de conexão na chamada ao Gemini. Utilizando motor analítico determinístico como fallback: {}", ex.getMessage());
-            return generateOfflineAnalyticalResponse(userFinancialDataJson);
-        } catch (AiServiceUnavailableException | RateLimitExceededException ex) {
-            log.warn("Gemini indisponível ou limite de taxa atingido ({}). Utilizando motor analítico determinístico como fallback.", ex.getMessage());
-            return generateOfflineAnalyticalResponse(userFinancialDataJson);
+            log.error("Timeout na comunicação com a API Google Gemini ({}s): {}", geminiConfig.getTimeoutSeconds(), ex.getMessage());
+            throw new AiTimeoutException("Tempo limite excedido ao aguardar resposta do Google Gemini (" +
+                    geminiConfig.getTimeoutSeconds() + " segundos).");
+        } catch (RateLimitExceededException | AiServiceUnavailableException | AiTimeoutException ex) {
+            log.warn("Exceção de resiliência da IA propagada para tratamento HTTP: {} - {}", ex.getClass().getSimpleName(), ex.getMessage());
+            throw ex;
         } catch (org.springframework.web.client.RestClientException ex) {
             log.warn("Falha de rede ou extração na chamada ao Gemini ({}). Utilizando motor analítico determinístico como fallback.", ex.getMessage());
             return generateOfflineAnalyticalResponse(userFinancialDataJson);

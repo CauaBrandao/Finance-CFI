@@ -10,6 +10,6 @@ public record ActionItemDTO(
         @Schema(description = "Justificativa da ação e benefício esperado", example = "Reduzir o impacto dessa categoria no orçamento mensal e aumentar a margem para poupança.")
         String motivo,
 
-        @Schema(description = "Nível de prioridade da ação (ALTA, MEDIA, BAIXA)", example = "ALTA")
+        @Schema(description = "Nível de prioridade de execução", allowableValues = {"ALTA", "MEDIA", "BAIXA"}, example = "ALTA")
         String prioridade
 ) {}

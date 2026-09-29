@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Avaliação da maturidade e preparação orçamentária do usuário para investir")
 public record InvestmentReadinessResponseDTO(
-        @Schema(description = "Classificação da preparação (PREPARADO, PRECISA_DE_AJUSTES, PRIORIDADE_ORGANIZACAO)", example = "PRECISA_DE_AJUSTES")
+        @Schema(description = "Classificação da maturidade para investir", allowableValues = {"PREPARADO", "PRECISA_DE_AJUSTES", "PRIORIDADE_ORGANIZACAO"}, example = "PRECISA_DE_AJUSTES")
         String status,
 
         @Schema(description = "Justificativa analítica pautada exclusivamente nas evidências do contexto financeiro", example = "O usuário mantém saldo positivo de R$ 670,00 e já realizou aportes totalizando R$ 350,00, mas a concentração de despesas essenciais ainda exige ajustes orçamentários antes de elevar o volume mensal de investimentos.")

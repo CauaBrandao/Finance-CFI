@@ -11,32 +11,32 @@ import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
-@Schema(description = "Representação de uma transação financeira")
+@Schema(description = "Representação de uma transação financeira de receita ou despesa")
 public record TransactionDTO(
-        @Schema(description = "Identificador único da transação", example = "tx_8f93a")
+        @Schema(description = "Identificador único da transação (gerado automaticamente no cadastro se omitido)", example = "tx_8f93a", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
         String id,
 
         @NotBlank(message = "A descrição não pode estar em branco")
         @Size(max = 120, message = "A descrição não pode exceder 120 caracteres")
-        @Schema(description = "Descrição detalhada do registro", example = "Supermercado Semanal")
+        @Schema(description = "Descrição detalhada do registro", example = "Supermercado Semanal", requiredMode = Schema.RequiredMode.REQUIRED, maxLength = 120)
         String description,
 
         @NotNull(message = "O valor é obrigatório")
         @DecimalMin(value = "0.01", message = "O valor deve ser de no mínimo R$ 0,01")
-        @Schema(description = "Valor monetário em reais", example = "250.75")
+        @Schema(description = "Valor monetário em reais (mínimo R$ 0,01)", example = "250.75", minimum = "0.01", requiredMode = Schema.RequiredMode.REQUIRED)
         BigDecimal amount,
 
         @NotBlank(message = "O tipo é obrigatório (income ou expense)")
         @Pattern(regexp = "^(income|expense)$", message = "O tipo deve ser 'income' ou 'expense'")
-        @Schema(description = "Tipo de movimentação: income (entrada) ou expense (saída)", example = "expense")
+        @Schema(description = "Tipo de movimentação: income (entrada/receita) ou expense (saída/despesa)", example = "expense", allowableValues = {"income", "expense"}, requiredMode = Schema.RequiredMode.REQUIRED)
         String type,
 
         @NotBlank(message = "A categoria é obrigatória")
         @Size(max = 40, message = "A categoria não pode exceder 40 caracteres")
-        @Schema(description = "Chave da categoria", example = "food")
+        @Schema(description = "Chave da categoria (ex: food, salary, leisure, transport, health, education, housing, utilities, services, other)", example = "food", maxLength = 40, requiredMode = Schema.RequiredMode.REQUIRED)
         String category,
 
-        @Schema(description = "Data da movimentação em formato ISO", example = "2026-09-28")
+        @Schema(description = "Data da movimentação em formato ISO (AAAA-MM-DD)", example = "2026-09-28", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
         String date
 ) {
     @JsonCreator

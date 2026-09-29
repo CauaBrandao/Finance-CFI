@@ -96,6 +96,11 @@ public class GeminiService {
         try {
             String aiJson = geminiClient.generateStructuredContent(SYSTEM_PROMPT, contextJson);
             return parseAndValidateAiResponse(aiJson);
+        } catch (com.cfi.finance.exception.RateLimitExceededException |
+                 com.cfi.finance.exception.AiServiceUnavailableException |
+                 com.cfi.finance.exception.AiTimeoutException e) {
+            // Repassa diretamente para que o GlobalExceptionHandler retorne 429, 503 ou 504
+            throw e;
         } catch (Exception e) {
             log.warn("Falha ao processar resposta da IA: {}. Recorrendo ao motor analítico offline estruturado.", e.getMessage());
             try {
