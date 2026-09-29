@@ -60,10 +60,14 @@ public class GeminiClient {
                     )
             );
 
-            String uri = "/" + geminiConfig.getModel() + ":generateContent?key=" + geminiConfig.getApiKey();
+            // Monta a URL completa explicitamente para evitar a resolução RFC 3986 do Spring,
+            // que substitui todo o path do baseUrl quando o URI relativo começa com '/'.
+            // URL correta: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key=...
+            String baseUrl = geminiConfig.getBaseUrl().stripTrailing();
+            String fullUrl = baseUrl + "/" + geminiConfig.getModel() + ":generateContent?key=" + geminiConfig.getApiKey();
 
             String rawResponse = restClient.post()
-                    .uri(uri)
+                    .uri(java.net.URI.create(fullUrl))
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(requestBody)
                     .retrieve()
