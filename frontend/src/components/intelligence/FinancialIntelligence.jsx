@@ -24,6 +24,7 @@ export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoa
 
     setLoading(true);
     setError(null);
+    setAnalysis(null);
 
     const contextPayload = buildFinancialContext(transactions, monthlyGoal, investmentGoal);
 

@@ -87,10 +87,12 @@ public class GeminiClient {
             return extractJsonFromGeminiResponse(rawResponse);
 
         } catch (ResourceAccessException ex) {
-            log.error("Timeout ou falha de conexão na chamada ao Gemini: {}", ex.getMessage());
-            throw new AiTimeoutException("Tempo limite excedido ao aguardar resposta do Google Gemini (" +
-                    geminiConfig.getTimeoutSeconds() + " segundos).");
-        } catch (RateLimitExceededException | AiServiceUnavailableException | GeminiApiException ex) {
+            log.warn("Timeout ou falha de conexão na chamada ao Gemini. Utilizando motor analítico determinístico como fallback: {}", ex.getMessage());
+            return generateOfflineAnalyticalResponse(userFinancialDataJson);
+        } catch (AiServiceUnavailableException | RateLimitExceededException ex) {
+            log.warn("Gemini indisponível ou limite de taxa atingido ({}). Utilizando motor analítico determinístico como fallback.", ex.getMessage());
+            return generateOfflineAnalyticalResponse(userFinancialDataJson);
+        } catch (GeminiApiException ex) {
             throw ex;
         } catch (Exception ex) {
             log.error("Erro inesperado ao comunicar com o Google Gemini: {}", ex.getMessage());
