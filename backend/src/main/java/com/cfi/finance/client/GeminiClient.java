@@ -56,7 +56,10 @@ public class GeminiClient {
                     ),
                     "generationConfig", Map.of(
                             "responseMimeType", "application/json",
-                            "temperature", 0.2
+                            "temperature", 0.2,
+                            "thinkingConfig", Map.of(
+                                    "thinkingBudget", 0
+                            )
                     )
             );
 
@@ -69,6 +72,7 @@ public class GeminiClient {
             String rawResponse = restClient.post()
                     .uri(java.net.URI.create(fullUrl))
                     .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON, MediaType.ALL)
                     .body(requestBody)
                     .retrieve()
                     .onStatus(HttpStatusCode::is4xxClientError, (req, resp) -> {
@@ -92,11 +96,15 @@ public class GeminiClient {
         } catch (AiServiceUnavailableException | RateLimitExceededException ex) {
             log.warn("Gemini indisponível ou limite de taxa atingido ({}). Utilizando motor analítico determinístico como fallback.", ex.getMessage());
             return generateOfflineAnalyticalResponse(userFinancialDataJson);
+        } catch (org.springframework.web.client.RestClientException ex) {
+            log.warn("Falha de rede ou extração na chamada ao Gemini ({}). Utilizando motor analítico determinístico como fallback.", ex.getMessage());
+            return generateOfflineAnalyticalResponse(userFinancialDataJson);
         } catch (GeminiApiException ex) {
-            throw ex;
+            log.warn("Exceção da API Gemini ({}). Utilizando motor analítico determinístico como fallback.", ex.getMessage());
+            return generateOfflineAnalyticalResponse(userFinancialDataJson);
         } catch (Exception ex) {
-            log.error("Erro inesperado ao comunicar com o Google Gemini: {}", ex.getMessage());
-            throw new GeminiApiException("Falha na comunicação com a Inteligência Artificial: " + ex.getMessage(), 500);
+            log.warn("Erro inesperado na chamada ao Gemini: {}. Utilizando motor analítico determinístico como fallback.", ex.getMessage());
+            return generateOfflineAnalyticalResponse(userFinancialDataJson);
         }
     }
 
@@ -110,22 +118,28 @@ public class GeminiClient {
             if (candidates.isArray() && !candidates.isEmpty()) {
                 JsonNode parts = candidates.get(0).path("content").path("parts");
                 if (parts.isArray() && !parts.isEmpty()) {
-                    String text = parts.get(0).path("text").asText();
-                    // Limpa possíveis delimitadores markdown de código se a LLM os incluir
-                    text = text.trim();
-                    if (text.startsWith("```json")) {
-                        text = text.substring(7);
+                    for (JsonNode part : parts) {
+                        String text = part.path("text").asText("").trim();
+                        if (text.isEmpty()) continue;
+                        if (text.startsWith("```json")) {
+                            text = text.substring(7);
+                        }
+                        if (text.startsWith("```")) {
+                            text = text.substring(3);
+                        }
+                        if (text.endsWith("```")) {
+                            text = text.substring(0, text.length() - 3);
+                        }
+                        text = text.trim();
+                        if (text.startsWith("{") || text.startsWith("[")) {
+                            return text;
+                        }
                     }
-                    if (text.startsWith("```")) {
-                        text = text.substring(3);
-                    }
-                    if (text.endsWith("```")) {
-                        text = text.substring(0, text.length() - 3);
-                    }
-                    return text.trim();
                 }
             }
             throw new GeminiApiException("Resposta do Gemini vazia ou sem bloco de conteúdo válido.", 502);
+        } catch (GeminiApiException ex) {
+            throw ex;
         } catch (Exception ex) {
             log.error("Erro ao fazer parse do JSON retornado pelo Gemini: {}", ex.getMessage());
             throw new GeminiApiException("Não foi possível processar o formato da resposta da IA.", 502);

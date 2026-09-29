@@ -85,16 +85,26 @@ public class GeminiService {
      * Envia o contexto estruturado e retorna o objeto FullAnalysisResponseDTO validado
      */
     public FullAnalysisResponseDTO analyzeFinancialContext(FinancialContextDTO context) {
+        String contextJson;
         try {
-            String contextJson = objectMapper.writeValueAsString(context);
-            String aiJson = geminiClient.generateStructuredContent(SYSTEM_PROMPT, contextJson);
-
-            return parseAndValidateAiResponse(aiJson);
-        } catch (GeminiApiException e) {
-            throw e;
+            contextJson = objectMapper.writeValueAsString(context);
         } catch (Exception e) {
-            log.error("Falha ao processar análise do Gemini: {}", e.getMessage());
-            throw new GeminiApiException("Erro durante o processamento da resposta da IA: " + e.getMessage(), 500);
+            log.error("Falha ao serializar contexto financeiro: {}", e.getMessage());
+            throw new GeminiApiException("Erro ao serializar dados para análise: " + e.getMessage(), 400);
+        }
+
+        try {
+            String aiJson = geminiClient.generateStructuredContent(SYSTEM_PROMPT, contextJson);
+            return parseAndValidateAiResponse(aiJson);
+        } catch (Exception e) {
+            log.warn("Falha ao processar resposta da IA: {}. Recorrendo ao motor analítico offline estruturado.", e.getMessage());
+            try {
+                String fallbackJson = geminiClient.generateOfflineAnalyticalResponse(contextJson);
+                return parseAndValidateAiResponse(fallbackJson);
+            } catch (Exception fallbackEx) {
+                log.error("Falha crítica no fallback offline: {}", fallbackEx.getMessage());
+                throw new GeminiApiException("Erro ao processar análise financeira: " + fallbackEx.getMessage(), 500);
+            }
         }
     }
 

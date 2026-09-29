@@ -3,7 +3,7 @@ package com.cfi.finance.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
@@ -14,10 +14,10 @@ public class GeminiConfig {
     @Value("${gemini.api.key:}")
     private String apiKey;
 
-    @Value("${gemini.model:gemini-2.5-flash}")
+    @Value("${gemini.model:gemini-3.5-flash}")
     private String model;
 
-    @Value("${gemini.timeout.seconds:20}")
+    @Value("${gemini.timeout.seconds:35}")
     private int timeoutSeconds;
 
     @Value("${gemini.base-url:https://generativelanguage.googleapis.com/v1beta/models}")
@@ -45,9 +45,8 @@ public class GeminiConfig {
 
     @Bean
     public RestClient geminiRestClient() {
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout((int) Duration.ofSeconds(10).toMillis());
-        requestFactory.setReadTimeout((int) Duration.ofSeconds(timeoutSeconds).toMillis());
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory();
+        requestFactory.setReadTimeout(Duration.ofSeconds(timeoutSeconds));
 
         return RestClient.builder()
                 .baseUrl(baseUrl)
