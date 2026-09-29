@@ -81,6 +81,7 @@ public class FinancialCalculationService {
         // Categoria com maior concentração
         if (context.categoriasDespesa() != null && !context.categoriasDespesa().isEmpty()) {
             CategoryBreakdownDTO topCategory = context.categoriasDespesa().stream()
+                    .filter(c -> c != null && c.totalGasto() != null)
                     .max(Comparator.comparing(CategoryBreakdownDTO::totalGasto))
                     .orElse(null);
             if (topCategory != null) {

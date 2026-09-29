@@ -117,12 +117,7 @@ export const buildFinancialContext = (transactions = [], monthlyGoal = 0, invest
       amount: Number(t.amount),
       type: t.type,
       category: t.category,
-      date: t.date ? t.date.split('T')[0] : '',
-      descricao: t.description,
-      valor: Number(t.amount),
-      tipo: t.type,
-      categoria: t.category,
-      data: t.date ? t.date.split('T')[0] : ''
+      date: t.date ? t.date.split('T')[0] : ''
     }))
   };
 };

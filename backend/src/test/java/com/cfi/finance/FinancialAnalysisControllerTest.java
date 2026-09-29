@@ -70,4 +70,45 @@ class FinancialAnalysisControllerTest {
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"));
     }
+
+    @Test
+    @DisplayName("POST /financial-analysis/full deve aceitar transações com chaves simultâneas em inglês e português sem erro")
+    void shouldAcceptDualEnglishAndPortugueseTransactionKeys() throws Exception {
+        DiagnosisResponseDTO diag = new DiagnosisResponseDTO("EXCELENTE", "Ótimo", List.of(), List.of());
+        InvestmentReadinessResponseDTO readiness = new InvestmentReadinessResponseDTO("PREPARADO", "Pronto", "Aviso");
+        FullAnalysisResponseDTO mockResponse = new FullAnalysisResponseDTO(
+                diag, List.of(), List.of(), readiness, Map.of("saldoCalculado", 2389.50)
+        );
+        Mockito.when(analysisService.getFullAnalysis(any(FinancialContextDTO.class))).thenReturn(mockResponse);
+
+        String json = """
+        {
+          "periodo": "2026-09",
+          "receitaTotal": 2500.00,
+          "despesaTotal": 110.50,
+          "saldo": 2389.50,
+          "ultimasTransacoes": [
+            {
+              "id": "1",
+              "description": "Salário",
+              "descricao": "Salário",
+              "amount": 2500,
+              "valor": 2500,
+              "type": "income",
+              "tipo": "income",
+              "category": "salary",
+              "categoria": "salary",
+              "date": "2026-09-01",
+              "data": "2026-09-01"
+            }
+          ]
+        }
+        """;
+
+        mockMvc.perform(post("/financial-analysis/full")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.diagnostico.situacao").value("EXCELENTE"));
+    }
 }

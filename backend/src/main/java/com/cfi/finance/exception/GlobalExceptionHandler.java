@@ -50,8 +50,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponseDTO> handleMessageNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+    @ExceptionHandler({HttpMessageNotReadableException.class, org.springframework.http.converter.HttpMessageConversionException.class, com.fasterxml.jackson.core.JsonProcessingException.class})
+    public ResponseEntity<ErrorResponseDTO> handleMessageNotReadable(Exception ex, HttpServletRequest request) {
         log.warn("Corpo da requisição ilegível ou JSON mal formatado na rota {}: {}", request.getRequestURI(), ex.getMessage());
         ErrorResponseDTO error = new ErrorResponseDTO(
                 HttpStatus.BAD_REQUEST.value(),
