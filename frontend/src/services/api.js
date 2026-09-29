@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const DEFAULT_TIMEOUT_MS = 25000;
 
 class ApiClient {
@@ -20,8 +20,27 @@ class ApiClient {
       ...options
     };
 
+    // Tenta primeiro através do endpoint base configurado (/api com proxy do Vite ou URL configurada)
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, config);
+      return await this._executeFetch(`${this.baseUrl}${endpoint}`, config, timeoutId);
+    } catch (err) {
+      // Se der falha de conexão usando a rota relativa /api, tenta fallback direto para http://localhost:8080/api
+      if (this.baseUrl === '/api' && (err.name === 'TypeError' || err.message?.includes('fetch') || err.message?.includes('NetworkError'))) {
+        try {
+          return await this._executeFetch(`http://localhost:8080/api${endpoint}`, config, timeoutId);
+        } catch (fallbackErr) {
+          clearTimeout(timeoutId);
+          throw fallbackErr;
+        }
+      }
+      clearTimeout(timeoutId);
+      throw err;
+    }
+  }
+
+  async _executeFetch(url, config, timeoutId) {
+    try {
+      const response = await fetch(url, config);
       clearTimeout(timeoutId);
 
       const contentType = response.headers.get('content-type');
@@ -43,7 +62,6 @@ class ApiClient {
 
       return data;
     } catch (err) {
-      clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
         const timeoutError = new Error('Tempo limite de resposta excedido. A IA ou o servidor demoraram para responder.');
         timeoutError.status = 504;

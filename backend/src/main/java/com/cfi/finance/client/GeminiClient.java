@@ -160,7 +160,7 @@ public class GeminiClient {
 
             String prepStatus = saldo > 0 && taxaPoupanca >= 15 ? "PREPARADO" : (saldo > 0 ? "PRECISA_DE_AJUSTES" : "PRIORIDADE_ORGANIZACAO");
 
-            return """
+            return String.format(java.util.Locale.ROOT, """
             {
               "diagnostico": {
                 "situacao": "%s",
@@ -218,7 +218,7 @@ public class GeminiClient {
                 "avisoEducacional": "Esta avaliação tem caráter estritamente educativo e organizacional. Não constitui aconselhamento, consultoria financeira ou recomendação de investimentos."
               }
             }
-            """.formatted(
+            """,
                     situacao,
                     receita, despesa, saldo, taxaPoupanca, topCat, topCatPercent,
                     topCat, topCat, topCatPercent, topCat, topCatPercent, topCatPercent > 30 ? "ALTA" : "MEDIA",

@@ -184,6 +184,32 @@ export const App = () => {
     }
   };
 
+  const handleLoadDemoData = () => {
+    const demoTransactions = [
+      { id: 'demo_1', description: 'Salário Mensal', amount: 4200, type: 'income', category: 'salary', date: '2026-09-05' },
+      { id: 'demo_2', description: 'Freelance Web Design', amount: 800, type: 'income', category: 'other', date: '2026-09-15' },
+      { id: 'demo_3', description: 'Supermercado Mensal', amount: 980, type: 'expense', category: 'food', date: '2026-09-06' },
+      { id: 'demo_4', description: 'Aluguel & Condomínio', amount: 1350, type: 'expense', category: 'bills', date: '2026-09-08' },
+      { id: 'demo_5', description: 'Combustível do Mês', amount: 380, type: 'expense', category: 'transport', date: '2026-09-10' },
+      { id: 'demo_6', description: 'Restaurantes & Delivery', amount: 430, type: 'expense', category: 'food', date: '2026-09-12' },
+      { id: 'demo_7', description: 'Plano de Saúde & Farmácia', amount: 260, type: 'expense', category: 'health', date: '2026-09-14' },
+      { id: 'demo_8', description: 'Streaming & Lazer', amount: 190, type: 'expense', category: 'leisure', date: '2026-09-18' },
+      { id: 'demo_9', description: 'Curso Online Especialização', amount: 150, type: 'expense', category: 'education', date: '2026-09-20' },
+      { id: 'demo_10', description: 'Aporte Tesouro Direto Selic', amount: 350, type: 'expense', category: 'investment', date: '2026-09-22' }
+    ];
+    setTransactions(demoTransactions);
+    transactionService.saveTransactions(demoTransactions);
+    if (!monthlyGoal) {
+      setMonthlyGoal(3800);
+      transactionService.saveMonthlyGoal(3800);
+    }
+    if (!investmentGoal) {
+      setInvestmentGoal(500);
+      transactionService.saveInvestmentGoal(500);
+    }
+    showToast('Cenário financeiro de demonstração carregado com sucesso!', 'success');
+  };
+
   // Totais e Métricas
   const totals = calculateTotals(transactions);
   const stats = calculateStats(transactions);
@@ -318,6 +344,7 @@ export const App = () => {
               setCachedAnalysis(res);
               transactionService.saveCachedAnalysis(res);
             }}
+            onLoadDemoData={handleLoadDemoData}
             showToast={showToast}
           />
         )}

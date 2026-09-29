@@ -8,7 +8,7 @@ import { ProblemCard } from './ProblemCard';
 import { ActionPlanCard } from './ActionPlanCard';
 import { InvestmentReadinessCard } from './InvestmentReadinessCard';
 
-export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoal, cachedAnalysis, onSaveAnalysis, showToast }) => {
+export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoal, cachedAnalysis, onSaveAnalysis, onLoadDemoData, showToast }) => {
   const [analysis, setAnalysis] = useState(cachedAnalysis);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -47,6 +47,8 @@ export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoa
         errorMsg = 'O serviço de Inteligência Artificial do Google Gemini está temporariamente indisponível.';
       } else if (err.status === 504) {
         errorMsg = 'Tempo limite de resposta excedido. O processamento demorou mais que o esperado.';
+      } else if (!err.status || err.message?.includes('NetworkError') || err.message?.includes('Failed to fetch') || err.message?.includes('fetch')) {
+        errorMsg = 'Não foi possível conectar ao servidor backend (Spring Boot na porta 8080). Certifique-se de que o backend está iniciado com mvn spring-boot:run.';
       }
 
       setError({
@@ -168,13 +170,26 @@ export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoa
             Clique no botão <strong>"Solicitar Análise com IA"</strong> acima para que o Google Gemini interprete seu
             histórico financeiro, aponte pontos de atenção com evidências e trace um plano de ação personalizado.
           </p>
-          <button
-            className="btn-primary"
-            onClick={handleRequestAnalysis}
-            disabled={transactions.length === 0}
-          >
-            Começar Análise Agora
-          </button>
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              className="btn-primary"
+              onClick={handleRequestAnalysis}
+              disabled={transactions.length === 0}
+            >
+              Começar Análise Agora
+            </button>
+
+            {transactions.length === 0 && onLoadDemoData && (
+              <button
+                className="btn-secondary"
+                onClick={onLoadDemoData}
+                style={{ borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
+              >
+                📊 Carregar Cenário de Teste / Apresentação
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

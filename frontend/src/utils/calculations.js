@@ -113,6 +113,11 @@ export const buildFinancialContext = (transactions = [], monthlyGoal = 0, invest
     })),
     ultimasTransacoes: transactions.slice(0, 30).map((t) => ({
       id: t.id,
+      description: t.description,
+      amount: Number(t.amount),
+      type: t.type,
+      category: t.category,
+      date: t.date ? t.date.split('T')[0] : '',
       descricao: t.description,
       valor: Number(t.amount),
       tipo: t.type,
