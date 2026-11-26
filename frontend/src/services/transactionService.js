@@ -28,6 +28,25 @@ export const transactionService = {
     return api.delete(`/transactions/${encodeURIComponent(id)}`, { timeout: CRUD_TIMEOUT_MS });
   },
 
+  /**
+   * Exclui várias transações reutilizando DELETE /transactions/{id}, em lotes
+   * para não sobrecarregar a API. Um 404 conta como sucesso (já não existia).
+   * Retorna { deleted, failed }.
+   */
+  async removeAll(ids, batchSize = 5) {
+    let deleted = 0;
+    let failed = 0;
+    for (let i = 0; i < ids.length; i += batchSize) {
+      const batch = ids.slice(i, i + batchSize);
+      const results = await Promise.allSettled(batch.map((id) => this.remove(id)));
+      results.forEach((r) => {
+        if (r.status === 'fulfilled' || r.reason?.status === 404) deleted += 1;
+        else failed += 1;
+      });
+    }
+    return { deleted, failed };
+  },
+
   loadGoals() {
     try {
       const monthly = parseFloat(localStorage.getItem(STORAGE_KEYS.MONTHLY_GOAL) || '0');

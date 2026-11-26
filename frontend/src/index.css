@@ -1069,6 +1069,35 @@ header {
     margin-bottom: 0;
 }
 
+.btn-clear-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid rgba(255, 107, 107, 0.35);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 107, 107, 0.08);
+    color: var(--expense-color);
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-clear-all:hover:not(:disabled) {
+    background: linear-gradient(135deg, #ff6b6b, #fd79a8);
+    border-color: transparent;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(255, 107, 107, 0.35);
+}
+
+.btn-clear-all:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 .transactions-controls {
     display: flex;
     gap: 10px;

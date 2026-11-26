@@ -1,6 +1,16 @@
 import React from 'react';
 
-export const DeleteModal = ({ isOpen, transactionDescription, onConfirm, onCancel, isDeleting = false }) => {
+export const DeleteModal = ({
+  isOpen,
+  transactionDescription,
+  onConfirm,
+  onCancel,
+  isDeleting = false,
+  title = 'Confirmar Exclusão',
+  message,
+  confirmLabel = 'Excluir',
+  deletingLabel = 'Excluindo...'
+}) => {
   if (!isOpen) return null;
 
   return (
@@ -13,16 +23,16 @@ export const DeleteModal = ({ isOpen, transactionDescription, onConfirm, onCance
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
         </div>
-        <h3 id="modalTitle">Confirmar Exclusão</h3>
+        <h3 id="modalTitle">{title}</h3>
         <p id="deleteModalText">
-          Deseja realmente excluir {transactionDescription ? `"${transactionDescription}"` : 'esta transação'}?
+          {message ?? `Deseja realmente excluir ${transactionDescription ? `"${transactionDescription}"` : 'esta transação'}?`}
         </p>
         <div className="modal-actions">
           <button className="btn-secondary" id="cancelDeleteBtn" onClick={onCancel} disabled={isDeleting}>
             Cancelar
           </button>
           <button className="btn-danger" id="confirmDeleteBtn" onClick={onConfirm} disabled={isDeleting}>
-            {isDeleting ? 'Excluindo...' : 'Excluir'}
+            {isDeleting ? deletingLabel : confirmLabel}
           </button>
         </div>
       </div>

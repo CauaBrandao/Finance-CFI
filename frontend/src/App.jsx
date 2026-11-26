@@ -45,6 +45,8 @@ export const App = () => {
   const [submitTxError, setSubmitTxError] = useState('');
   const [deleteModalState, setDeleteModalState] = useState({ isOpen: false, id: null, description: '' });
   const [isDeletingTx, setIsDeletingTx] = useState(false);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [isClearingTx, setIsClearingTx] = useState(false);
   const [isLoadingDemo, setIsLoadingDemo] = useState(false);
 
   // Notificações Toast
@@ -255,6 +257,28 @@ export const App = () => {
     }
   };
 
+  // Exclui todas as transações de uma vez (após confirmação no modal)
+  const handleConfirmClearAll = async () => {
+    if (isClearingTx) return;
+    setIsClearingTx(true);
+    try {
+      const { deleted, failed } = await transactionService.removeAll(transactions.map((t) => t.id));
+      const refreshed = await transactionService.getAll().catch(() => null);
+      if (refreshed) setTransactions(refreshed);
+      setEditingTransaction(null);
+      if (failed > 0) {
+        showToast(`${deleted} transação(ões) excluída(s), mas ${failed} falharam. Tente novamente.`, 'error');
+      } else {
+        showToast(`${deleted} transação(ões) excluída(s).`, 'warning');
+      }
+      setIsClearModalOpen(false);
+    } catch (err) {
+      showToast(extractApiErrorMessage(err), 'error');
+    } finally {
+      setIsClearingTx(false);
+    }
+  };
+
   const handleExportCsv = () => {
     const success = exportTransactionsToCSV(transactions);
     if (success) {
@@ -332,6 +356,19 @@ export const App = () => {
           if (!isDeletingTx) {
             setDeleteModalState({ isOpen: false, id: null, description: '' });
           }
+        }}
+      />
+
+      <DeleteModal
+        isOpen={isClearModalOpen}
+        title="Limpar todas as transações"
+        message={`Deseja realmente excluir todas as ${transactions.length} transações? Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir tudo"
+        deletingLabel="Excluindo..."
+        isDeleting={isClearingTx}
+        onConfirm={handleConfirmClearAll}
+        onCancel={() => {
+          if (!isClearingTx) setIsClearModalOpen(false);
         }}
       />
 
@@ -447,7 +484,8 @@ export const App = () => {
               isLoading={transactionsLoading}
               error={transactionsError}
               onRetry={fetchTransactions}
-              isBusy={isSubmittingTx || isDeletingTx || isLoadingDemo}
+              isBusy={isSubmittingTx || isDeletingTx || isClearingTx || isLoadingDemo}
+              onClearAll={() => setIsClearModalOpen(true)}
               onEdit={(tx) => {
                 setSubmitTxError('');
                 setEditingTransaction(tx);

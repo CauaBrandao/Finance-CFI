@@ -9,6 +9,7 @@ export const TransactionList = ({
   isLoading = false,
   error = null,
   onRetry,
+  onClearAll,
   isBusy = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,6 +71,23 @@ export const TransactionList = ({
           </svg>
           Transações
         </h2>
+
+        {onClearAll && (
+          <button
+            type="button"
+            className="btn-clear-all"
+            id="clearAllTransactionsBtn"
+            onClick={onClearAll}
+            disabled={isBusy || isLoading || transactions.length === 0}
+            title="Excluir todas as transações"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+            Limpar
+          </button>
+        )}
 
         <div className="transactions-controls">
           <div className="search-box">
