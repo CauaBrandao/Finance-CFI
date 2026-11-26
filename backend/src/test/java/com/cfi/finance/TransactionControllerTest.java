@@ -157,4 +157,36 @@ class TransactionControllerTest {
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.error").value("RESOURCE_NOT_FOUND"));
     }
+
+    @Test
+    @DisplayName("POST /transactions com data fora do formato ISO ou valor excessivo deve retornar 400 Bad Request")
+    void shouldReturn400ForInvalidDateAndExcessiveAmount() throws Exception {
+        String invalidJson = """
+                {
+                  "description": "Compra inválida",
+                  "amount": 1000000000.00,
+                  "type": "expense",
+                  "category": "food",
+                  "date": "28/09/2026"
+                }
+                """;
+
+        mockMvc.perform(post("/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    @DisplayName("POST /transactions com JSON malformado deve retornar 400 MALFORMED_JSON")
+    void shouldReturn400ForMalformedJson() throws Exception {
+        mockMvc.perform(post("/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{invalid-json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("MALFORMED_JSON"));
+    }
 }

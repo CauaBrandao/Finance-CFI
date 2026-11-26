@@ -73,4 +73,31 @@ class FinancialCalculationServiceTest {
         assertEquals("Alimentação", metrics.get("categoriaMaiorGasto"));
         assertEquals(BigDecimal.valueOf(920), metrics.get("categoriaMaiorGastoValor"));
     }
+
+    @Test
+    @DisplayName("Deve rejeitar mais de 100 transações no contexto financeiro")
+    void shouldRejectMoreThan100Transactions() {
+        List<com.cfi.finance.dto.TransactionDTO> many = java.util.stream.IntStream.range(0, 101)
+                .mapToObj(i -> new com.cfi.finance.dto.TransactionDTO("id_" + i, "Item " + i, BigDecimal.TEN, "expense", "food", "2026-09-01"))
+                .toList();
+
+        FinancialContextDTO context = new FinancialContextDTO(
+                "2026-09", BigDecimal.valueOf(5000), BigDecimal.valueOf(1010), BigDecimal.valueOf(3990),
+                79.8, 33.6, 30, null, null, null, null, many
+        );
+        assertThrows(InvalidFinancialDataException.class, () -> calculationService.validateFinancialContext(context));
+    }
+
+    @Test
+    @DisplayName("Não deve falhar por divisão por zero quando receita for zero")
+    void shouldHandleZeroIncomeDeterministically() {
+        FinancialContextDTO context = new FinancialContextDTO(
+                "2026-09", BigDecimal.ZERO, BigDecimal.valueOf(200), BigDecimal.valueOf(-200),
+                0.0, 200.0, 1, null, null, null, null, null
+        );
+        Map<String, Object> metrics = calculationService.calculateDeterministicMetrics(context);
+        assertEquals(0.0, (Double) metrics.get("taxaPoupancaPercentual"));
+        assertEquals(0.0, (Double) metrics.get("comprometimentoRendaPercentual"));
+        assertEquals(BigDecimal.valueOf(-200), metrics.get("saldoCalculado"));
+    }
 }
