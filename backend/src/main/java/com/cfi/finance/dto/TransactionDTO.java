@@ -3,6 +3,7 @@ package com.cfi.finance.dto;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -23,7 +24,8 @@ public record TransactionDTO(
 
         @NotNull(message = "O valor é obrigatório")
         @DecimalMin(value = "0.01", message = "O valor deve ser de no mínimo R$ 0,01")
-        @Schema(description = "Valor monetário em reais (mínimo R$ 0,01)", example = "250.75", minimum = "0.01", requiredMode = Schema.RequiredMode.REQUIRED)
+        @DecimalMax(value = "999999999.99", message = "O valor não pode exceder R$ 999.999.999,99")
+        @Schema(description = "Valor monetário em reais (mínimo R$ 0,01)", example = "250.75", minimum = "0.01", maximum = "999999999.99", requiredMode = Schema.RequiredMode.REQUIRED)
         BigDecimal amount,
 
         @NotBlank(message = "O tipo é obrigatório (income ou expense)")
@@ -36,6 +38,7 @@ public record TransactionDTO(
         @Schema(description = "Chave da categoria (ex: food, salary, leisure, transport, health, education, housing, utilities, services, other)", example = "food", maxLength = 40, requiredMode = Schema.RequiredMode.REQUIRED)
         String category,
 
+        @Pattern(regexp = "^(\\d{4}-\\d{2}-\\d{2}(T.*)?)?$", message = "A data deve estar no formato ISO (AAAA-MM-DD)")
         @Schema(description = "Data da movimentação em formato ISO (AAAA-MM-DD)", example = "2026-09-28", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
         String date
 ) {
@@ -53,12 +56,19 @@ public record TransactionDTO(
             @JsonProperty("date") String date,
             @JsonProperty("data") String data
     ) {
-        String finalDesc = (description != null && !description.isBlank()) ? description : descricao;
+        String rawDesc = (description != null && !description.isBlank()) ? description : descricao;
         BigDecimal finalAmount = (amount != null) ? amount : valor;
-        String finalType = (type != null && !type.isBlank()) ? type : tipo;
-        String finalCategory = (category != null && !category.isBlank()) ? category : categoria;
-        String finalDate = (date != null && !date.isBlank()) ? date : data;
+        String rawType = (type != null && !type.isBlank()) ? type : tipo;
+        String rawCategory = (category != null && !category.isBlank()) ? category : categoria;
+        String rawDate = (date != null && !date.isBlank()) ? date : data;
 
-        return new TransactionDTO(id, finalDesc, finalAmount, finalType, finalCategory, finalDate);
+        return new TransactionDTO(
+                id != null ? id.trim() : null,
+                rawDesc != null ? rawDesc.trim() : null,
+                finalAmount,
+                rawType != null ? rawType.trim() : null,
+                rawCategory != null ? rawCategory.trim() : null,
+                rawDate != null ? rawDate.trim() : null
+        );
     }
 }

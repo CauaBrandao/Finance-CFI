@@ -8,9 +8,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
@@ -110,15 +112,41 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(error);
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponseDTO> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        log.warn("Parâmetro inválido na rota {}", request.getRequestURI());
+        ErrorResponseDTO error = new ErrorResponseDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                "INVALID_PARAMETER",
+                "Um ou mais parâmetros informados possuem formato inválido.",
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        log.warn("Método HTTP não suportado na rota {}: {}", request.getRequestURI(), ex.getMethod());
+        ErrorResponseDTO error = new ErrorResponseDTO(
+                HttpStatus.METHOD_NOT_ALLOWED.value(),
+                "METHOD_NOT_ALLOWED",
+                "O método HTTP utilizado não é suportado por este endpoint.",
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(error);
+    }
+
     @ExceptionHandler(GeminiApiException.class)
     public ResponseEntity<ErrorResponseDTO> handleGeminiApi(GeminiApiException ex, HttpServletRequest request) {
         log.error("Erro da API Gemini (status={}) na rota {}: {}", ex.getStatusCode(), request.getRequestURI(), ex.getMessage());
-        int status = ex.getStatusCode() > 0 ? ex.getStatusCode() : HttpStatus.INTERNAL_SERVER_ERROR.value();
+        int status = ex.getStatusCode() >= 400 && ex.getStatusCode() < 600
+                ? ex.getStatusCode()
+                : HttpStatus.INTERNAL_SERVER_ERROR.value();
 
         ErrorResponseDTO error = new ErrorResponseDTO(
                 status,
                 "GEMINI_API_ERROR",
-                ex.getMessage(),
+                "Não foi possível processar a análise de IA no momento. Tente novamente em instantes.",
                 request.getRequestURI()
         );
         return ResponseEntity.status(status).body(error);

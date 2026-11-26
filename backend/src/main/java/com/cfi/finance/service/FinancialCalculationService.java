@@ -31,8 +31,8 @@ public class FinancialCalculationService {
         }
 
         // Validação de limites para prevenir Denial of Service por payloads gigantes
-        if (context.ultimasTransacoes() != null && context.ultimasTransacoes().size() > 500) {
-            throw new InvalidFinancialDataException("O limite máximo de transações por análise é de 500 registros.");
+        if (context.ultimasTransacoes() != null && context.ultimasTransacoes().size() > 100) {
+            throw new InvalidFinancialDataException("O limite máximo de transações por análise é de 100 registros.");
         }
     }
 

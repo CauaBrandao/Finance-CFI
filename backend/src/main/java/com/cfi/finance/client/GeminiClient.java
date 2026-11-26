@@ -15,7 +15,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
+import java.net.SocketTimeoutException;
+import java.net.http.HttpTimeoutException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Component
@@ -63,14 +67,13 @@ public class GeminiClient {
                     )
             );
 
-            // Monta a URL completa explicitamente para evitar a resolução RFC 3986 do Spring,
-            // que substitui todo o path do baseUrl quando o URI relativo começa com '/'.
-            // URL correta: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key=...
+            // Monta a URL sem expor a chave na query string; envia a chave via header x-goog-api-key
             String baseUrl = geminiConfig.getBaseUrl().stripTrailing();
-            String fullUrl = baseUrl + "/" + geminiConfig.getModel() + ":generateContent?key=" + geminiConfig.getApiKey();
+            String fullUrl = baseUrl + "/" + geminiConfig.getModel() + ":generateContent";
 
             String rawResponse = restClient.post()
                     .uri(java.net.URI.create(fullUrl))
+                    .header("x-goog-api-key", geminiConfig.getApiKey())
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON, MediaType.ALL)
                     .body(requestBody)
@@ -80,7 +83,7 @@ public class GeminiClient {
                         if (code == 429) {
                             throw new RateLimitExceededException("Limite de taxa (Rate Limit) do Gemini excedido. Tente novamente em instantes.");
                         }
-                        throw new GeminiApiException("Erro do cliente na API Gemini (HTTP " + code + ")", code);
+                        throw new GeminiApiException("Erro na comunicação com o provedor de IA (HTTP " + code + ").", code);
                     })
                     .onStatus(HttpStatusCode::is5xxServerError, (req, resp) -> {
                         int code = resp.getStatusCode().value();
@@ -91,22 +94,41 @@ public class GeminiClient {
             return extractJsonFromGeminiResponse(rawResponse);
 
         } catch (ResourceAccessException ex) {
-            log.error("Timeout na comunicação com a API Google Gemini ({}s): {}", geminiConfig.getTimeoutSeconds(), ex.getMessage());
-            throw new AiTimeoutException("Tempo limite excedido ao aguardar resposta do Google Gemini (" +
-                    geminiConfig.getTimeoutSeconds() + " segundos).");
+            if (isTimeoutException(ex)) {
+                log.error("Timeout na comunicação com a API Google Gemini ({}s)", geminiConfig.getTimeoutSeconds());
+                throw new AiTimeoutException("Tempo limite excedido ao aguardar resposta do Google Gemini (" +
+                        geminiConfig.getTimeoutSeconds() + " segundos).");
+            }
+            log.error("Falha de conectividade ao acessar a API Google Gemini");
+            throw new AiServiceUnavailableException("Serviço do Google Gemini temporariamente inacessível.");
         } catch (RateLimitExceededException | AiServiceUnavailableException | AiTimeoutException ex) {
-            log.warn("Exceção de resiliência da IA propagada para tratamento HTTP: {} - {}", ex.getClass().getSimpleName(), ex.getMessage());
+            log.warn("Exceção de resiliência da IA propagada para tratamento HTTP: {}", ex.getClass().getSimpleName());
             throw ex;
         } catch (org.springframework.web.client.RestClientException ex) {
-            log.warn("Falha de rede ou extração na chamada ao Gemini ({}). Utilizando motor analítico determinístico como fallback.", ex.getMessage());
+            log.warn("Falha na chamada ao Gemini. Utilizando motor analítico determinístico como fallback.");
             return generateOfflineAnalyticalResponse(userFinancialDataJson);
         } catch (GeminiApiException ex) {
-            log.warn("Exceção da API Gemini ({}). Utilizando motor analítico determinístico como fallback.", ex.getMessage());
+            log.warn("Exceção da API Gemini (status={}). Utilizando motor analítico determinístico como fallback.", ex.getStatusCode());
             return generateOfflineAnalyticalResponse(userFinancialDataJson);
         } catch (Exception ex) {
-            log.warn("Erro inesperado na chamada ao Gemini: {}. Utilizando motor analítico determinístico como fallback.", ex.getMessage());
+            log.warn("Erro inesperado na chamada ao Gemini. Utilizando motor analítico determinístico como fallback.");
             return generateOfflineAnalyticalResponse(userFinancialDataJson);
         }
+    }
+
+    private boolean isTimeoutException(Throwable ex) {
+        Throwable current = ex;
+        while (current != null) {
+            if (current instanceof SocketTimeoutException || current instanceof HttpTimeoutException) {
+                return true;
+            }
+            String msg = current.getMessage();
+            if (msg != null && msg.toLowerCase(Locale.ROOT).contains("timed out")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     /**
@@ -142,13 +164,13 @@ public class GeminiClient {
         } catch (GeminiApiException ex) {
             throw ex;
         } catch (Exception ex) {
-            log.error("Erro ao fazer parse do JSON retornado pelo Gemini: {}", ex.getMessage());
+            log.error("Erro ao fazer parse do JSON retornado pelo Gemini.");
             throw new GeminiApiException("Não foi possível processar o formato da resposta da IA.", 502);
         }
     }
 
     /**
-     * Fallback analítico determinístico profissional:
+     * Fallback analítico determinístico seguro (serializado via Jackson):
      * Garante resiliência e demonstrabilidade mesmo se a chave estiver ausente ou offline.
      */
     public String generateOfflineAnalyticalResponse(String financialDataJson) {
@@ -159,7 +181,7 @@ public class GeminiClient {
             double saldo = data.path("saldo").asDouble(0);
             double taxaPoupanca = data.path("taxaPoupancaPercentual").asDouble(0);
 
-            String situacao = "ESTAVEL";
+            String situacao;
             if (saldo < 0) {
                 situacao = "CRITICO";
             } else if (taxaPoupanca < 10) {
@@ -179,76 +201,62 @@ public class GeminiClient {
                 topCatPercent = first.path("percentualDasDespesas").asDouble(0);
             }
 
-            String prepStatus = saldo > 0 && taxaPoupanca >= 15 ? "PREPARADO" : (saldo > 0 ? "PRECISA_DE_AJUSTES" : "PRIORIDADE_ORGANIZACAO");
+            String prepStatus = saldo > 0 && taxaPoupanca >= 15
+                    ? "PREPARADO"
+                    : (saldo > 0 ? "PRECISA_DE_AJUSTES" : "PRIORIDADE_ORGANIZACAO");
 
-            return String.format(java.util.Locale.ROOT, """
-            {
-              "diagnostico": {
-                "situacao": "%s",
-                "resumo": "Análise determinística estruturada: Receita de R$ %.2f, despesas de R$ %.2f e saldo final de R$ %.2f (taxa de poupança de %.1f%%). A categoria '%s' representa %.1f%% das despesas consolidadas.",
-                "problemas": [
-                  {
-                    "titulo": "Concentração de gastos em %s",
-                    "descricao": "A categoria '%s' consome %.1f%% de todas as saídas registradas no período.",
-                    "evidencias": [
-                      "%s representa %.1f%% do total de despesas.",
-                      "Impacto direto sobre a margem de poupança líquida."
-                    ],
-                    "prioridade": "%s"
-                  }
-                ],
-                "acoes": [
-                  {
-                    "acao": "Estabelecer um teto mensal específico para %s",
-                    "motivo": "Evitar que essa categoria comprometa o saldo final e ampliar a capacidade de poupança.",
-                    "prioridade": "ALTA"
-                  },
-                  {
-                    "acao": "Manter acompanhamento semanal dos gastos variáveis",
-                    "motivo": "Garantir previsibilidade orçamentária ao longo de todo o ciclo mensal.",
-                    "prioridade": "MEDIA"
-                  }
-                ]
-              },
-              "problemas": [
-                {
-                  "titulo": "Concentração de gastos em %s",
-                  "descricao": "A categoria '%s' consome %.1f%% de todas as saídas registradas no período.",
-                  "evidencias": [
-                    "%s representa %.1f%% do total de despesas.",
+            String topPriority = topCatPercent > 30 ? "ALTA" : "MEDIA";
+
+            Map<String, Object> problem = new LinkedHashMap<>();
+            problem.put("titulo", "Concentração de gastos em " + topCat);
+            problem.put("descricao", String.format(Locale.ROOT,
+                    "A categoria '%s' consome %.1f%% de todas as saídas registradas no período.", topCat, topCatPercent));
+            problem.put("evidencias", List.of(
+                    String.format(Locale.ROOT, "%s representa %.1f%% do total de despesas.", topCat, topCatPercent),
                     "Impacto direto sobre a margem de poupança líquida."
-                  ],
-                  "prioridade": "%s"
-                }
-              ],
-              "acoes": [
-                {
-                  "acao": "Estabelecer um teto mensal específico para %s",
-                  "motivo": "Evitar que essa categoria comprometa o saldo final e ampliar a capacidade de poupança.",
-                  "prioridade": "ALTA"
-                },
-                {
-                  "acao": "Manter acompanhamento semanal dos gastos variáveis",
-                  "motivo": "Garantir previsibilidade orçamentária ao longo de todo o ciclo mensal.",
-                  "prioridade": "MEDIA"
-                }
-              ],
-              "preparacaoInvestimento": {
-                "status": "%s",
-                "justificativa": "Com saldo de R$ %.2f e taxa de poupança de %.1f%%, o fluxo de caixa apresenta %s. Não há informações suficientes sobre reserva de emergência para avaliar esse aspecto.",
-                "avisoEducacional": "Esta avaliação tem caráter estritamente educativo e organizacional. Não constitui aconselhamento, consultoria financeira ou recomendação de investimentos."
-              }
-            }
-            """,
-                    situacao,
-                    receita, despesa, saldo, taxaPoupanca, topCat, topCatPercent,
-                    topCat, topCat, topCatPercent, topCat, topCatPercent, topCatPercent > 30 ? "ALTA" : "MEDIA",
-                    topCat,
-                    topCat, topCat, topCatPercent, topCat, topCatPercent, topCatPercent > 30 ? "ALTA" : "MEDIA",
-                    topCat,
-                    prepStatus,
-                    saldo, taxaPoupanca, prepStatus.equals("PREPARADO") ? "margem estável para aportes regulares" : "necessidade de consolidação prévia antes de aportes maiores"
-            );
+            ));
+            problem.put("prioridade", topPriority);
+
+            Map<String, Object> action1 = new LinkedHashMap<>();
+            action1.put("acao", "Estabelecer um teto mensal específico para " + topCat);
+            action1.put("motivo", "Evitar que essa categoria comprometa o saldo final e ampliar a capacidade de poupança.");
+            action1.put("prioridade", "ALTA");
+
+            Map<String, Object> action2 = new LinkedHashMap<>();
+            action2.put("acao", "Manter acompanhamento semanal dos gastos variáveis");
+            action2.put("motivo", "Garantir previsibilidade orçamentária ao longo de todo o ciclo mensal.");
+            action2.put("prioridade", "MEDIA");
+
+            List<Map<String, Object>> problemas = List.of(problem);
+            List<Map<String, Object>> acoes = List.of(action1, action2);
+
+            Map<String, Object> diagnostico = new LinkedHashMap<>();
+            diagnostico.put("situacao", situacao);
+            diagnostico.put("resumo", String.format(Locale.ROOT,
+                    "Análise determinística estruturada: Receita de R$ %.2f, despesas de R$ %.2f e saldo final de R$ %.2f (taxa de poupança de %.1f%%). A categoria '%s' representa %.1f%% das despesas consolidadas.",
+                    receita, despesa, saldo, taxaPoupanca, topCat, topCatPercent));
+            diagnostico.put("problemas", problemas);
+            diagnostico.put("acoes", acoes);
+
+            Map<String, Object> preparacao = new LinkedHashMap<>();
+            preparacao.put("status", prepStatus);
+            preparacao.put("justificativa", String.format(Locale.ROOT,
+                    "Com saldo de R$ %.2f e taxa de poupança de %.1f%%, o fluxo de caixa apresenta %s. Não há informações suficientes sobre reserva de emergência para avaliar esse aspecto.",
+                    saldo,
+                    taxaPoupanca,
+                    "PREPARADO".equals(prepStatus)
+                            ? "margem estável para aportes regulares"
+                            : "necessidade de consolidação prévia antes de aportes maiores"));
+            preparacao.put("avisoEducacional",
+                    "Esta avaliação tem caráter estritamente educativo e organizacional. Não constitui aconselhamento, consultoria financeira ou recomendação de investimentos.");
+
+            Map<String, Object> root = new LinkedHashMap<>();
+            root.put("diagnostico", diagnostico);
+            root.put("problemas", problemas);
+            root.put("acoes", acoes);
+            root.put("preparacaoInvestimento", preparacao);
+
+            return objectMapper.writeValueAsString(root);
         } catch (Exception e) {
             log.error("Erro no gerador analítico de contingência: {}", e.getMessage());
             return "{}";
