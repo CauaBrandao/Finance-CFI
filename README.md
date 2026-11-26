@@ -1,6 +1,6 @@
 # CFI Finance — Inteligência Financeira Pessoal
 
-![Status](https://img.shields.io/badge/Status-Concluído-success)
+![Status](https://img.shields.io/badge/Status-Pronto%20para%20Deploy%20(Local%20Validado)-blue)
 ![Categoria](https://img.shields.io/badge/Categoria-Classificação%20%2F%20Análise-blueviolet)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-brightgreen)
@@ -17,15 +17,15 @@ O **CFI Finance — Inteligência Financeira Pessoal** é uma aplicação web fu
 
 O sistema combina:
 
-* **Frontend em React 18 + Vite**;
-* **API REST em Java 21 + Spring Boot 3.3.4**;
-* **Google Gemini** para análise financeira contextual;
-* **Swagger/OpenAPI** para documentação e testes da API;
+* **Frontend em React 18 + Vite** com CRUD de transações integrado à API REST;
+* **API REST em Java 21 + Spring Boot 3.3.4** (`GET/POST/PUT/DELETE /api/transactions`, análise de IA e `GET /api/health`);
+* **Google Gemini** para análise financeira contextual (chave protegida exclusivamente no backend);
+* **Swagger/OpenAPI** para documentação e testes da API (habilitado em desenvolvimento e configurável em produção);
 * cálculos financeiros determinísticos;
-* validação de dados;
-* tratamento de erros;
-* mecanismo de fallback analítico;
-* armazenamento local das informações da interface por meio do `localStorage`.
+* validação de dados alinhada entre frontend e backend;
+* tratamento global de erros (`400`, `404`, `405`, `429`, `500`, `503`, `504`);
+* mecanismo de fallback analítico determinístico;
+* armazenamento em memória no backend para transações e `localStorage` no frontend apenas para metas, tema, paleta e cache visual da última análise.
 
 O projeto se enquadra na categoria acadêmica:
 
@@ -623,9 +623,11 @@ Valor padrão:
 8080
 ```
 
-### CORS_ALLOWED_ORIGINS
+### CORS_ALLOWED_ORIGINS e `SPRING_PROFILES_ACTIVE`
 
-Define origens permitidas para comunicação com a API.
+* Em desenvolvimento local (`cors.allow-local-dev=true`), origens `localhost` e `127.0.0.1` são permitidas automaticamente junto ao proxy Vite.
+* Em produção (`SPRING_PROFILES_ACTIVE=prod`), `application-prod.properties` define `cors.allow-local-dev=false` e restringe o CORS exclusivamente às origens HTTPS configuradas em `CORS_ALLOWED_ORIGINS`.
+* Swagger em produção fica desabilitado por padrão (`SPRINGDOC_SWAGGER_ENABLED=false`, `SPRINGDOC_API_DOCS_ENABLED=false`), podendo ser habilitado explicitamente por variável de ambiente para demonstrações.
 
 ---
 
@@ -643,7 +645,8 @@ com:
 VITE_API_URL=http://localhost:8080/api
 ```
 
-Quando nenhuma variável é informada, o cliente utiliza `/api`, aproveitando o proxy configurado no Vite durante o desenvolvimento.
+* Em desenvolvimento (`npm run dev`), se `VITE_API_URL` não for definida, o cliente usa `/api` via proxy do Vite (`vite.config.js`).
+* Em produção (`npm run build`), **`VITE_API_URL` é obrigatória** (ex.: `https://sua-api.onrender.com/api`). Não há fallback para `http://localhost:8080/api` no bundle de produção.
 
 ---
 
@@ -1341,12 +1344,12 @@ Esse mecanismo mantém a aplicação demonstrável mesmo quando a resposta gener
 
 ---
 
-# 💾 28. Armazenamento no Frontend
+# 💾 28. Armazenamento e Persistência (Frontend e Backend)
 
-O frontend utiliza `localStorage` do navegador para armazenar:
+* **Transações (fonte única de verdade):** Gerenciadas exclusivamente pela API REST do backend (`/api/transactions`), armazenadas em memória em uma estrutura `LinkedHashMap` sincronizada.
+* **Preferências e Metas no `localStorage`:** O navegador armazena apenas:
 
 ```text
-transactions
 monthlyGoal
 investmentGoal
 theme
@@ -1354,100 +1357,57 @@ palette
 cfi_last_analysis
 ```
 
-Portanto:
-
-> As informações cadastradas pela interface são persistidas localmente no navegador.
-
-O projeto atual não utiliza banco de dados.
-
-O CRUD `/api/transactions` existente no backend possui armazenamento em memória por meio de uma estrutura `ConcurrentHashMap`.
-
-Consequentemente, essas informações do backend não devem ser tratadas como persistência permanente.
+> **Limitação conhecida:** O projeto não utiliza banco de dados externo por decisão de escopo mínimo. Portanto, as transações armazenadas na memória do backend são voláteis e serão perdidas ao reiniciar ou hibernar o servidor.
 
 ---
 
 # 🔌 29. Comunicação do Frontend com a API
 
-O frontend possui um cliente HTTP próprio baseado em `fetch`.
+O frontend possui um cliente HTTP próprio (`frontend/src/services/api.js`) baseado em `fetch`, com timeout padrão de `42s` (superior ao timeout de `35s` do backend para o Gemini) e sem fallback para `localhost` em produção.
 
-O serviço de análise utiliza:
+As operações integradas incluem:
+* `GET /api/transactions`, `POST /api/transactions`, `PUT /api/transactions/{id}`, `DELETE /api/transactions/{id}`;
+* `POST /api/financial-analysis/full`;
+* `GET /api/health` (verificação de disponibilidade).
 
-```text
-POST /api/financial-analysis/full
-```
-
-para solicitar a análise completa.
-
-O frontend possui tratamento específico para:
-
-```text
-400
-429
-503
-504
-```
-
-e também trata falhas de conexão com o backend.
-
-Durante uma requisição de análise, a interface apresenta um estado visual de carregamento.
-
-Caso ocorra uma falha, o usuário recebe:
-
-* código HTTP;
-* mensagem amigável;
-* detalhes técnicos;
-* opção de tentar novamente.
+O frontend trata explicitamente `400`, `404`, `429`, `503`, `504`, falhas de rede e erro de configuração de `VITE_API_URL`, exibindo mensagens amigáveis (sem stack traces), bloqueando botões durante submissões para evitar requisições duplicadas e oferecendo botão de nova tentativa.
 
 ---
 
 # 🧪 30. Testes Automatizados
 
-O backend possui testes automatizados utilizando:
+### Backend (JUnit 5 + Mockito + MockMvc + MockRestServiceServer)
 
-* JUnit;
-* Mockito;
-* Spring Boot Test;
-* MockMvc.
-
-A suíte presente no projeto cobre:
-
-```text
-FinancialCalculationServiceTest
-FinancialAnalysisServiceTest
-FinancialAnalysisControllerTest
-TransactionControllerTest
-```
-
-Para executar os testes:
+Suíte em `backend/src/test/java/com/cfi/finance/`:
+* `TransactionControllerTest` (11 testes)
+* `FinancialAnalysisControllerTest` (6 testes)
+* `FinancialCalculationServiceTest` (5 testes)
+* `FinancialAnalysisServiceTest` (1 teste)
+* `GeminiClientTest` (6 testes — chave ausente, header `x-goog-api-key`, 429, 503, timeout, conexão recusada)
+* `GeminiServiceTest` (3 testes — fallback para JSON inválido/enum inválido, propagação de 429/503/504, prompt injection)
+* `CorsConfigProdTest` (2 testes — bloqueio de `localhost` e liberação de domínio configurado no perfil `prod`)
+* `HealthControllerTest` (1 teste)
 
 ```bash
 cd backend
 mvn test
 ```
 
-Os resultados registrados no projeto apresentam:
+Resultado verificado: **35 testes — 0 falhas — 0 erros (`BUILD SUCCESS`)**.
 
-```text
-FinancialAnalysisControllerTest
-6 testes — 0 falhas — 0 erros
+### Frontend (`node --test`)
 
-FinancialAnalysisServiceTest
-1 teste — 0 falhas — 0 erros
+Suíte em `frontend/tests/`:
+* `api.test.js` (6 testes — `resolveApiBaseUrl` dev/prod, ausência de `localhost`, erro de configuração em prod, `204 No Content`, propagação de erros HTTP)
+* `calculations.test.js` (4 testes — totais, estatísticas, ordenação/limite de 30 transações, formatação de data)
+* `transactionService.test.js` (1 teste — chamadas REST CRUD)
 
-FinancialCalculationServiceTest
-3 testes — 0 falhas — 0 erros
-
-TransactionControllerTest
-9 testes — 0 falhas — 0 erros
+```bash
+cd frontend
+npm test
 ```
 
-Total:
-
-```text
-19 testes
-0 falhas
-0 erros
-```
+Resultado verificado: **11 testes — 11 aprovados — 0 falhas**.
 
 ---
 
@@ -1989,13 +1949,16 @@ Depois abrir espaço para perguntas.
 | Documentação                 | Swagger / OpenAPI 3           |
 | Validação                    | Spring Validation             |
 | JSON                         | Jackson                       |
-| Testes                       | JUnit 5 + Mockito + MockMvc   |
-| Persistência do frontend     | LocalStorage                  |
-| Persistência do CRUD backend | Memória                       |
+| Testes Backend               | JUnit 5 + Mockito + MockMvc (35 testes) |
+| Testes Frontend              | Node Test Runner (`node --test`, 11 testes) |
+| Persistência do frontend     | `localStorage` (apenas metas, tema, paleta e cache visual) |
+| Persistência do CRUD backend | Memória (`LinkedHashMap` sincronizado — volátil) |
+| Health Check                 | `GET /api/health`             |
+| Deploy preparado             | `backend/Dockerfile`, `render.yaml`, `frontend/vercel.json` |
 | Cálculos financeiros         | Determinísticos               |
 | Resposta da IA               | JSON estruturado              |
 | Rate Limit                   | Tratamento do `429` do Gemini |
-| Timeout                      | 35 segundos                   |
+| Timeout                      | 35 segundos (backend) / 42 segundos (frontend) |
 | Timeout HTTP                 | `504`                         |
 | Indisponibilidade IA         | `503`                         |
 | Validação inválida           | `400`                         |
@@ -2004,34 +1967,42 @@ Depois abrir espaço para perguntas.
 
 ---
 
-# 🚀 38. Resumo para Executar o Projeto
+# 🚀 38. Preparação para Produção e Deploy
+
+O repositório inclui configurações prontas para implantação (sem publicação automática realizada):
+
+* **Backend (`backend/Dockerfile`, `render.yaml`, `application-prod.properties`):**
+  * Recomendação: **Render** (Web Service Docker, tier gratuito) ou **Railway**.
+  * Health check: `GET /api/health`.
+  * Variáveis obrigatórias em produção: `SPRING_PROFILES_ACTIVE=prod`, `GEMINI_API_KEY`, `CORS_ALLOWED_ORIGINS=<url-https-do-frontend>`.
+  * Opcional para demonstração: `SPRINGDOC_SWAGGER_ENABLED=true` e `SPRINGDOC_API_DOCS_ENABLED=true`.
+* **Frontend (`frontend/vercel.json`):**
+  * Recomendação: **Vercel** ou **Netlify** (tier gratuito, HTTPS automático).
+  * Root Directory: `frontend` | Build Command: `npm run build` | Output Directory: `dist`.
+  * Variável obrigatória no build: `VITE_API_URL=https://<seu-backend>/api`.
+* **URLs de Produção:** *Pendentes de publicação externa pelo usuário.*
+* **Documentação complementar em `docs/`:**
+  * [MATRIZ_REQUISITOS.md](docs/MATRIZ_REQUISITOS.md)
+  * [PLANO_IMPLEMENTACAO.md](docs/PLANO_IMPLEMENTACAO.md)
+  * [RELATORIO_FINAL.md](docs/RELATORIO_FINAL.md)
+  * [ROTEIRO_APRESENTACAO.md](docs/ROTEIRO_APRESENTACAO.md)
+
+---
+
+# 🚀 39. Resumo para Executar Localmente e Testar
 
 ### Backend
 
 ```bash
 cd backend
 cp .env.example .env
-# configure GEMINI_API_KEY
+# configure GEMINI_API_KEY (opcional; sem ela usa fallback determinístico)
 mvn spring-boot:run
 ```
 
-Backend:
-
-```text
-http://localhost:8080/api
-```
-
-Swagger:
-
-```text
-http://localhost:8080/api/swagger-ui.html
-```
-
-OpenAPI:
-
-```text
-http://localhost:8080/api/v3/api-docs
-```
+* API: `http://localhost:8080/api`
+* Health: `http://localhost:8080/api/health`
+* Swagger: `http://localhost:8080/api/swagger-ui.html`
 
 ### Frontend
 
@@ -2043,17 +2014,16 @@ npm install
 npm run dev
 ```
 
-Aplicação:
+* Aplicação: `http://localhost:5173`
 
-```text
-http://localhost:5173
-```
-
-### Testes
+### Testes e Builds
 
 ```bash
-cd backend
-mvn test
+# Backend
+cd backend && mvn test && mvn -B package -DskipTests
+
+# Frontend
+cd frontend && npm test && VITE_API_URL=https://api.example.com/api npm run build
 ```
 
 ---
