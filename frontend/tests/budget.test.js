@@ -162,3 +162,4 @@ test('shiftPeriod e formatMonthYearLabel navegam corretamente entre meses e anos
   assert.deepEqual(shiftPeriod(12, 2026, 1), { month: 1, year: 2027 });
   assert.equal(formatMonthYearLabel(11, 2026), 'Novembro de 2026');
 });
+

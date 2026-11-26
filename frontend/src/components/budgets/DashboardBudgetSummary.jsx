@@ -99,3 +99,4 @@ export const DashboardBudgetSummary = ({ budgets = [], transactions = [], onOpen
     </section>
   );
 };
+

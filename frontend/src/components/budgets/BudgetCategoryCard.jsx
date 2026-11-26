@@ -105,3 +105,4 @@ export const BudgetCategoryCard = ({ budget, onEdit, onDelete }) => {
     </article>
   );
 };
+

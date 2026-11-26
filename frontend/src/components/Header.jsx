@@ -5,7 +5,7 @@ export const Header = ({ onTogglePalette, onToggleTheme, onExportCsv, currentThe
 
   return (
     <header>
-      <div className="logo">
+      <a href="/" className="logo" title="Voltar à página inicial" style={{ color: 'inherit', textDecoration: 'none' }}>
         <div className="logo-icon" aria-hidden="true">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -14,7 +14,7 @@ export const Header = ({ onTogglePalette, onToggleTheme, onExportCsv, currentThe
           </svg>
         </div>
         <h1>CFI <span>Finance</span></h1>
-      </div>
+      </a>
 
       <div className="header-actions">
         {/* Painel de paletas de cores */}

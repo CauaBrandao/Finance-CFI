@@ -76,3 +76,4 @@ export const BudgetSummaryCards = ({ summary }) => {
     </section>
   );
 };
+
