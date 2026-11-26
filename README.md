@@ -1,7 +1,7 @@
 # CFI Finance — Inteligência Financeira Pessoal
 
 ![Status](https://img.shields.io/badge/Status-Em%20Produção-success)
-![Categoria](https://img.shields.io/badge/Categoria-Classificação%20%2F%20Análise-blueviolet)
+![Categoria](https://img.shields.io/badge/Categoria-Análise%20e%20Insights-blueviolet)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-brightgreen)
 ![React](https://img.shields.io/badge/React-18-blue)
@@ -12,7 +12,7 @@
 
 Aplicação web fullstack para **organizar, acompanhar e analisar finanças pessoais**, combinando **cálculos financeiros determinísticos** com **análise contextual por Inteligência Artificial Generativa (Google Gemini)**.
 
-Projeto acadêmico da disciplina de **Inteligência Artificial na Web (IAW) — Trabalho 2**, na categoria **Classificação / Análise**.
+Projeto acadêmico da disciplina de **Inteligência Artificial na Web (IAW) — Trabalho 2: Aplicação Web Completa com IA em Produção**, na categoria **Análise e Insights**.
 
 ---
 
@@ -22,7 +22,10 @@ Projeto acadêmico da disciplina de **Inteligência Artificial na Web (IAW) — 
 | --- | --- |
 | **Aplicação (Frontend — Vercel)** | **https://finance-cfi.vercel.app** |
 | API (Backend — Render) | https://cfi-finance-backend.onrender.com/api |
+| **Swagger UI (documentação da API)** | **https://cfi-finance-backend.onrender.com/api/swagger-ui.html** |
+| OpenAPI JSON | https://cfi-finance-backend.onrender.com/api/v3/api-docs |
 | Health check | https://cfi-finance-backend.onrender.com/api/health |
+| Código-fonte (frontend + backend) | https://github.com/CauaBrandao/Finance-CFI |
 
 > ⏱️ **Atenção:** o backend roda no plano gratuito do Render, que **hiberna após um período sem uso**. A primeira requisição depois disso pode levar **cerca de 50 segundos** para responder. Abra a aplicação alguns minutos antes de uma demonstração para "acordar" o servidor.
 
@@ -79,7 +82,7 @@ Análise gerada pelo Google Gemini, com classificação da situação, problemas
 5. [Tecnologias](#️-5-tecnologias)
 6. [Estrutura do Projeto](#-6-estrutura-do-projeto)
 7. [Deploy em Produção](#-7-deploy-em-produção)
-8. [Executar Localmente](#-8-executar-localmente)
+8. [Variáveis de Ambiente](#-variáveis-de-ambiente) e [Executar Localmente](#-8-executar-localmente)
 9. [Rotas da API](#-9-rotas-da-api)
 10. [Validação e Tratamento de Erros](#️-10-validação-e-tratamento-de-erros)
 11. [Segurança](#-11-segurança)
@@ -115,9 +118,9 @@ O CFI Finance transforma os dados registrados em uma **análise contextual estru
 
 **Os cálculos nunca são delegados à IA.** Isso reduz o risco de o modelo alterar ou inventar valores financeiros.
 
-### Categoria: Classificação / Análise
+### Categoria: Análise e Insights
 
-A IA não funciona como um chatbot genérico. O fluxo é:
+O sistema é um **painel (dashboard) que categoriza e analisa dados financeiros**, extraindo insights estruturados com IA. A IA não funciona como um chatbot genérico. O fluxo é:
 
 ```text
 Dados financeiros
@@ -353,11 +356,11 @@ Variáveis de ambiente configuradas:
 | `SPRING_PROFILES_ACTIVE` | `prod` |
 | `GEMINI_API_KEY` | Chave do Gemini (secreta, definida só no painel do Render) |
 | `GEMINI_MODEL` | `gemini-3.5-flash` |
-| `CORS_ALLOWED_ORIGINS` | `https://finance-cfi.vercel.app` |
-| `SPRINGDOC_SWAGGER_ENABLED` | `false` |
-| `SPRINGDOC_API_DOCS_ENABLED` | `false` |
+| `CORS_ALLOWED_ORIGINS` | `https://finance-cfi.vercel.app,https://cfi-finance-backend.onrender.com` |
+| `SPRINGDOC_SWAGGER_ENABLED` | `true` |
+| `SPRINGDOC_API_DOCS_ENABLED` | `true` |
 
-> Para mostrar o Swagger em produção numa apresentação, altere as duas variáveis `SPRINGDOC_*` para `true` no Render. A documentação fica em `https://cfi-finance-backend.onrender.com/api/swagger-ui.html`.
+> O Swagger está **público em produção**: https://cfi-finance-backend.onrender.com/api/swagger-ui.html. O próprio domínio do backend está em `CORS_ALLOWED_ORIGINS` para que o botão "Try it out" do Swagger funcione atrás do proxy HTTPS do Render. Para desligar a documentação, basta mudar as variáveis `SPRINGDOC_*` para `false`.
 
 ### Frontend — Vercel
 
@@ -377,6 +380,33 @@ O `vercel.json` faz o rewrite de todas as rotas para `index.html` (SPA) e adicio
 ### Deploy contínuo
 
 Vercel e Render estão conectados ao repositório no GitHub. Cada `push` na branch `main` dispara um novo deploy automaticamente.
+
+---
+
+## 🔐 Variáveis de Ambiente
+
+Os modelos das variáveis estão versionados em dois arquivos **`.env.example`** (os arquivos `.env` reais ficam fora do Git):
+
+* [`backend/.env.example`](backend/.env.example)
+* [`frontend/.env.example`](frontend/.env.example)
+
+### Backend
+
+| Variável | Obrigatória | Padrão | Descrição |
+| --- | --- | --- | --- |
+| `GEMINI_API_KEY` | Sim, para IA real | — | Chave da API do Google Gemini ([Google AI Studio](https://aistudio.google.com/)). Sem ela, a análise usa o fallback determinístico. |
+| `GEMINI_MODEL` | Não | `gemini-3.5-flash` | Modelo do Gemini usado na análise |
+| `SERVER_PORT` | Não | `8080` | Porta local do Spring Boot (no Render é usada a variável `PORT`) |
+| `SPRING_PROFILES_ACTIVE` | Em produção | — | Use `prod` em produção |
+| `CORS_ALLOWED_ORIGINS` | Em produção | `http://localhost:5173,http://localhost:3000` | Origens permitidas, separadas por vírgula |
+| `SPRINGDOC_SWAGGER_ENABLED` | Não | `true` (dev) / `false` (prod) | Liga a interface do Swagger |
+| `SPRINGDOC_API_DOCS_ENABLED` | Não | `true` (dev) / `false` (prod) | Liga o JSON OpenAPI |
+
+### Frontend
+
+| Variável | Obrigatória | Descrição |
+| --- | --- | --- |
+| `VITE_API_URL` | Em produção | URL pública da API com `/api` no final (ex.: `https://cfi-finance-backend.onrender.com/api`). Em dev pode ficar vazia, porque o Vite faz proxy de `/api`. |
 
 ---
 
@@ -601,7 +631,7 @@ No frontend, o cliente HTTP (`services/api.js`) tem timeout de **42 s** (maior q
 * **Chave do Gemini só no backend:** definida pela variável `GEMINI_API_KEY` no Render. O frontend nunca recebe a chave e ela nunca é commitada.
 * **CORS restrito em produção:** o perfil `prod` bloqueia `localhost`/`127.0.0.1` e aceita apenas as origens em `CORS_ALLOWED_ORIGINS`.
 * **Sem stack traces:** `server.error.include-stacktrace=never` e `include-message=never` em produção.
-* **Swagger desabilitado por padrão em produção.**
+* **Swagger configurável por variável de ambiente:** no perfil `prod` vem desligado por padrão e foi ligado explicitamente (`SPRINGDOC_*=true`) para a avaliação.
 * **Container não-root:** a imagem Docker roda com um usuário dedicado (`cfi`).
 * **Headers de segurança no frontend** via `vercel.json`.
 * **Proteção contra prompt injection** no prompt enviado ao Gemini.
@@ -655,7 +685,7 @@ Os testes podem ser feitos direto em produção: **https://finance-cfi.vercel.ap
 | 5 | Aba **Inteligência Financeira** → **Solicitar Análise com IA** | Estado de carregamento, diagnóstico, problemas, evidências, plano de ação e preparação para investir |
 | 6 | **Carregar Cenário de Teste / Apresentação** | Dados de exemplo carregados; executar a análise em seguida |
 | 7 | Exportar CSV | Arquivo abre corretamente no Excel |
-| 8 | Transação inválida (`amount: 0`, `type: "teste"`) via Swagger | `400 Bad Request` com resposta estruturada |
+| 8 | Transação inválida (`amount: 0`, `type: "teste"`) via [Swagger](https://cfi-finance-backend.onrender.com/api/swagger-ui.html) | `400 Bad Request` com resposta estruturada |
 | 9 | `GET /api/transactions/id-inexistente` | `404 Not Found` |
 | 10 | Health check | `"status": "UP"` e `"aiConfigured": true` |
 
@@ -665,7 +695,7 @@ Os testes podem ser feitos direto em produção: **https://finance-cfi.vercel.ap
 
 | Tempo | Etapa | Conteúdo |
 | --- | --- | --- |
-| 00:00–02:00 | **Introdução** | Problema, objetivo, público e categoria (Classificação / Análise) |
+| 00:00–02:00 | **Introdução** | Problema, objetivo, público e categoria (Análise e Insights) |
 | 02:00–05:00 | **Arquitetura e prompt** | React → Spring Boot → cálculos → prompt → Gemini → JSON; separação cálculo × IA, prevenção de alucinação, prompt injection, chave em variável de ambiente |
 | 05:00–10:00 | **Demonstração ao vivo** | Aplicação em produção: transações, metas, gráficos e análise com IA (diagnóstico, problemas, ações, preparação para investir) |
 | 10:00–13:00 | **Erros e casos limite** | Entrada inválida, recurso inexistente, rate limit, indisponibilidade, timeout, fallback e mensagens amigáveis |
@@ -703,11 +733,11 @@ Material complementar em [`docs/`](docs/):
 
 | Item | Implementação |
 | --- | --- |
-| Categoria | Classificação / Análise |
+| Categoria | Análise e Insights |
 | Frontend | React 18 + Vite 5 — **Vercel** |
 | Backend | Java 21 + Spring Boot 3.3.4 — **Render (Docker)** |
 | IA Generativa | Google Gemini (`gemini-3.5-flash`) |
-| API | REST + Swagger / OpenAPI 3 |
+| API | REST + Swagger / OpenAPI 3 (público em produção) |
 | Cálculos financeiros | Determinísticos (fora da IA) |
 | Resposta da IA | JSON estruturado → DTOs |
 | Persistência | Memória no backend; `localStorage` para preferências |
