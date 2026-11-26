@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { PalettePanel } from '../PalettePanel';
+import { transactionService } from '../../services/transactionService';
 import './landing.css';
 
 const APP_PATH = '/app';
@@ -29,6 +31,8 @@ const ICONS = {
   calc: (<><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" y1="6" x2="16" y2="6" /><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01M8 10h.01M12 10h.01M16 10h.01" /></>),
   code: (<><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>),
   check: (<polyline points="20 6 9 17 4 12" />),
+  sun: (<><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" /></>),
+  moon: (<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />),
 };
 
 const FEATURES = [
@@ -79,6 +83,16 @@ const STACK = [
 
 const TEAM = ['Cauã Brandão', 'Fernando', 'Igor Aldivan'];
 
+// Aplica tema/paleta no <html>, exatamente como o App faz, para compartilhar as preferências.
+const applyTheme = (theme) => {
+  if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  else document.documentElement.removeAttribute('data-theme');
+};
+const applyPalette = (palette) => {
+  if (palette) document.documentElement.setAttribute('data-palette', palette);
+  else document.documentElement.removeAttribute('data-palette');
+};
+
 const useReveal = () => {
   useEffect(() => {
     const els = document.querySelectorAll('.lp-reveal');
@@ -102,8 +116,43 @@ const useReveal = () => {
 export const LandingPage = () => {
   const [activeShot, setActiveShot] = useState(0);
   const [scrolled, setScrolled] = useState(false);
+  const [theme, setTheme] = useState(() => transactionService.loadPreferences().theme);
+  const [palette, setPalette] = useState(() => transactionService.loadPreferences().palette);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const paletteRef = useRef(null);
+  const isLight = theme === 'light';
 
   useReveal();
+
+  useEffect(() => { applyTheme(theme); }, [theme]);
+  useEffect(() => { applyPalette(palette); }, [palette]);
+
+  // Fecha o painel de paletas ao clicar fora ou pressionar Esc
+  useEffect(() => {
+    if (!isPaletteOpen) return undefined;
+    const onClick = (e) => {
+      if (paletteRef.current && !paletteRef.current.contains(e.target)) setIsPaletteOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setIsPaletteOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isPaletteOpen]);
+
+  const handleToggleTheme = () => {
+    const next = isLight ? 'dark' : 'light';
+    setTheme(next);
+    transactionService.saveTheme(next);
+  };
+
+  const handleSelectPalette = (selected) => {
+    const next = palette === selected ? '' : selected;
+    setPalette(next);
+    transactionService.savePalette(next);
+  };
 
   useEffect(() => {
     document.title = 'CFI Finance — Inteligência Financeira Pessoal';
@@ -135,7 +184,39 @@ export const LandingPage = () => {
             <a href="#telas">Telas</a>
             <a href="#tecnologia">Tecnologia</a>
           </div>
-          <a href={APP_PATH} className="lp-btn lp-btn-primary lp-btn-sm">Abrir app</a>
+          <div className="lp-nav-actions" ref={paletteRef}>
+            <button
+              type="button"
+              className="lp-icon-btn"
+              onClick={() => setIsPaletteOpen((o) => !o)}
+              aria-expanded={isPaletteOpen}
+              aria-label="Escolher paleta de cores"
+              title="Escolher paleta de cores"
+            >
+              <Icon d={ICONS.palette} size={18} />
+            </button>
+            <button
+              type="button"
+              className="lp-icon-btn"
+              onClick={handleToggleTheme}
+              aria-label={isLight ? 'Ativar tema escuro' : 'Ativar tema claro'}
+              title={isLight ? 'Tema escuro' : 'Tema claro'}
+            >
+              <Icon d={isLight ? ICONS.moon : ICONS.sun} size={18} />
+            </button>
+            <a href={APP_PATH} className="lp-btn lp-btn-primary lp-btn-sm">Abrir app</a>
+
+            {isPaletteOpen && (
+              <div className="lp-palette-pop">
+                <PalettePanel isOpen activePalette={palette} onSelectPalette={handleSelectPalette} />
+                {palette && (
+                  <button type="button" className="lp-palette-reset" onClick={() => handleSelectPalette(palette)}>
+                    Voltar à paleta padrão
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -168,7 +249,10 @@ export const LandingPage = () => {
                 <span /><span /><span />
                 <div className="lp-browser-url">finance-cfi.vercel.app/app</div>
               </div>
-              <img src="/screenshots/01-dashboard.png" alt="Dashboard do CFI Finance com entradas, saídas, saldo e metas" />
+              <img
+                src={isLight ? '/screenshots/05-tema-claro.png' : '/screenshots/01-dashboard.png'}
+                alt="Dashboard do CFI Finance com entradas, saídas, saldo e metas"
+              />
             </div>
             <div className="lp-float lp-float-1">
               <span className="lp-float-icon is-green"><Icon d={ICONS.trend} size={18} /></span>
