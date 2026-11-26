@@ -131,8 +131,7 @@ const daysTrackedEl = document.getElementById('daysTracked');
 const motivationalText = document.getElementById('motivationalText');
 const themeToggle = document.getElementById('themeToggle');
 const exportBtn = document.getElementById('exportBtn');
-const confettiCanvas = document.getElementById('confettiCanvas');
-const ctx = confettiCanvas.getContext('2d');
+
 
 const investmentGoalInput = document.getElementById('investmentGoal');
 const setInvestmentBtn = document.getElementById('setInvestmentBtn');
@@ -677,7 +676,7 @@ const renderInvestment = () => {
 
 /**
  * checkInvestment — Verifica se a meta de investimento foi atingida.
- * Se sim, mostra toast e lança confetti de celebração.
+ * Se sim, mostra toast de celebração.
  */
 const checkInvestment = () => {
     if (investmentGoal <= 0) return;
@@ -686,7 +685,6 @@ const checkInvestment = () => {
 
     if (totalInvested >= investmentGoal) {
         showToast('Meta de investimento atingida! 🎉', 'success');
-        launchConfetti();
     }
 };
 
@@ -1141,74 +1139,6 @@ paletteOptions.forEach((opt) => {
 });
 
 // ============================================================
-// CONFETTI — Efeito visual de celebração
-// ============================================================
-let confettiParticles = [];
-let confettiActive = false;
-
-/**
- * launchConfetti — Lança partículas de confetti na tela.
- * Usa Canvas API para desenhar as partículas com animação.
- */
-const launchConfetti = () => {
-    confettiCanvas.width = window.innerWidth;
-    confettiCanvas.height = window.innerHeight;
-    confettiActive = true;
-    confettiParticles = [];
-
-    const colors = ['#6c5ce7', '#00cec9', '#fd79a8', '#fdcb6e', '#55efc4', '#ff6b6b', '#a29bfe'];
-
-    for (let i = 0; i < 150; i++) {
-        confettiParticles.push({
-            x: Math.random() * confettiCanvas.width,
-            y: Math.random() * confettiCanvas.height - confettiCanvas.height,
-            w: Math.random() * 10 + 5,
-            h: Math.random() * 6 + 3,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            speed: Math.random() * 3 + 2,
-            angle: Math.random() * Math.PI * 2,
-            spin: (Math.random() - 0.5) * 0.2,
-            drift: (Math.random() - 0.5) * 2
-        });
-    }
-
-    animateConfetti();
-};
-
-/**
- * animateConfetti — Anima as partículas de confetti frame a frame.
- */
-const animateConfetti = () => {
-    if (!confettiActive) return;
-
-    ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-
-    let alive = 0;
-    confettiParticles.forEach((p) => {
-        p.y += p.speed;
-        p.x += p.drift;
-        p.angle += p.spin;
-
-        if (p.y < confettiCanvas.height + 20) {
-            alive++;
-            ctx.save();
-            ctx.translate(p.x, p.y);
-            ctx.rotate(p.angle);
-            ctx.fillStyle = p.color;
-            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-            ctx.restore();
-        }
-    });
-
-    if (alive > 0) {
-        requestAnimationFrame(animateConfetti);
-    } else {
-        confettiActive = false;
-        ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-    }
-};
-
-// ============================================================
 // EVENT LISTENERS — Conexão entre elementos HTML e funções JS
 // ============================================================
 
@@ -1282,7 +1212,6 @@ setGoalBtn.addEventListener('click', () => {
     localStorage.setItem('monthlyGoal', monthlyGoal);
     renderGoal();
     showToast(`Média de gastos de ${formatCurrency(monthlyGoal)} definida!`, 'success');
-    launchConfetti();
 });
 
 // Meta de investimento — define e salva no localStorage
@@ -1296,7 +1225,6 @@ setInvestmentBtn.addEventListener('click', () => {
     localStorage.setItem('investmentGoal', investmentGoal);
     renderInvestment();
     showToast(`Meta de investimento de ${formatCurrency(investmentGoal)} definida!`, 'success');
-    launchConfetti();
 });
 
 // Modal de exclusão — confirmar

@@ -11,11 +11,13 @@ import { ChartsSection } from './components/ChartsSection';
 import { TransactionList } from './components/TransactionList';
 import { DeleteModal } from './components/DeleteModal';
 import { ToastContainer } from './components/ToastContainer';
-import { ConfettiCanvas } from './components/ConfettiCanvas';
 import { FinancialIntelligence } from './components/intelligence/FinancialIntelligence';
+import { CategoryBudgetsPage } from './components/budgets/CategoryBudgetsPage';
+import { DashboardBudgetSummary } from './components/budgets/DashboardBudgetSummary';
 
 import { extractApiErrorMessage } from './services/api';
 import { transactionService } from './services/transactionService';
+import { budgetService } from './services/budgetService';
 import { calculateTotals, calculateStats } from './utils/calculations';
 import { exportTransactionsToCSV } from './utils/exportCsv';
 import { randomItem, formatCurrency } from './utils/formatters';
@@ -29,16 +31,15 @@ export const App = () => {
 
   const [monthlyGoal, setMonthlyGoal] = useState(0);
   const [investmentGoal, setInvestmentGoal] = useState(0);
+  const [budgets, setBudgets] = useState([]);
 
   // Estados de navegação e interface
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'intelligence'
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'budgets' | 'intelligence'
   const [theme, setTheme] = useState('dark');
   const [palette, setPalette] = useState('');
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [motivationalMessage, setMotivationalMessage] = useState('Comece a registrar suas transações!');
-  const [confettiTrigger, setConfettiTrigger] = useState(0);
 
-  // Estados de edição, exclusão e envio assíncrono
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [isSubmittingTx, setIsSubmittingTx] = useState(false);
   const [submitTxError, setSubmitTxError] = useState('');
@@ -83,6 +84,7 @@ export const App = () => {
 
     setMonthlyGoal(mGoal);
     setInvestmentGoal(iGoal);
+    setBudgets(budgetService.getAll());
     setTheme(savedTheme);
     setPalette(savedPalette);
     setCachedAnalysis(lastAnalysis);
@@ -101,10 +103,6 @@ export const App = () => {
 
     fetchTransactions();
   }, [fetchTransactions]);
-
-  const triggerConfetti = () => {
-    setConfettiTrigger((prev) => prev + 1);
-  };
 
   // Alternância de Tema
   const handleToggleTheme = () => {
@@ -139,14 +137,49 @@ export const App = () => {
     setMonthlyGoal(val);
     transactionService.saveMonthlyGoal(val);
     showToast(`Média de gastos de ${formatCurrency(val)} definida!`, 'success');
-    triggerConfetti();
   };
 
   const handleSetInvestmentGoal = (val) => {
     setInvestmentGoal(val);
     transactionService.saveInvestmentGoal(val);
     showToast(`Meta de investimento de ${formatCurrency(val)} definida!`, 'success');
-    triggerConfetti();
+  };
+
+  // Orçamentos por Categoria (persistência local frontend)
+  const handleCreateBudget = (payload) => {
+    try {
+      budgetService.create(payload);
+      setBudgets(budgetService.getAll());
+      showToast('Orçamento por categoria criado com sucesso!', 'success');
+      return true;
+    } catch (err) {
+      showToast(err.message || 'Não foi possível criar o orçamento.', 'error');
+      return false;
+    }
+  };
+
+  const handleUpdateBudget = (id, payload) => {
+    try {
+      budgetService.update(id, payload);
+      setBudgets(budgetService.getAll());
+      showToast('Orçamento atualizado com sucesso!', 'info');
+      return true;
+    } catch (err) {
+      showToast(err.message || 'Não foi possível atualizar o orçamento.', 'error');
+      return false;
+    }
+  };
+
+  const handleDeleteBudget = (id) => {
+    try {
+      budgetService.remove(id);
+      setBudgets(budgetService.getAll());
+      showToast('Orçamento removido.', 'warning');
+      return true;
+    } catch (err) {
+      showToast(err.message || 'Não foi possível remover o orçamento.', 'error');
+      return false;
+    }
   };
 
   // CRUD de Transações integrado ao Backend REST
@@ -182,7 +215,6 @@ export const App = () => {
         const totalInvested = investmentTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
         if (investmentGoal > 0 && totalInvested >= investmentGoal) {
           showToast('Meta de investimento atingida! 🎉', 'success');
-          triggerConfetti();
         }
       }
       setTransactionsError(null);
@@ -290,7 +322,6 @@ export const App = () => {
       </div>
 
       <ToastContainer toasts={toasts} />
-      <ConfettiCanvas trigger={confettiTrigger} />
 
       <DeleteModal
         isOpen={deleteModalState.isOpen}
@@ -336,6 +367,16 @@ export const App = () => {
               <rect x="3" y="14" width="7" height="7" />
             </svg>
             Dashboard Financeiro
+          </button>
+
+          <button
+            className={`nav-tab-btn ${activeTab === 'budgets' ? 'active' : ''}`}
+            onClick={() => setActiveTab('budgets')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+            Orçamentos
           </button>
 
           <button
@@ -393,6 +434,13 @@ export const App = () => {
               palette={palette}
             />
 
+            {/* Resumo discreto de Orçamentos por Categoria do mês atual */}
+            <DashboardBudgetSummary
+              budgets={budgets}
+              transactions={transactions}
+              onOpenBudgets={() => setActiveTab('budgets')}
+            />
+
             {/* Lista de Transações com Busca, Filtros, Ordenação e Estados de API */}
             <TransactionList
               transactions={transactions}
@@ -414,6 +462,17 @@ export const App = () => {
               }}
             />
           </>
+        ) : activeTab === 'budgets' ? (
+          <CategoryBudgetsPage
+            budgets={budgets}
+            transactions={transactions}
+            transactionsLoading={transactionsLoading}
+            transactionsError={transactionsError}
+            onRetryTransactions={fetchTransactions}
+            onCreateBudget={handleCreateBudget}
+            onUpdateBudget={handleUpdateBudget}
+            onDeleteBudget={handleDeleteBudget}
+          />
         ) : (
           /* Módulo de Inteligência Financeira Pessoal (Google Gemini) */
           <FinancialIntelligence

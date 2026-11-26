@@ -61,3 +61,20 @@ export const PALETTES = [
   { id: 'emerald', name: 'Esmeralda', group: 'Tons Frios', className: 'cool-emerald' },
   { id: 'pacific', name: 'Pacífico', group: 'Tons Frios', className: 'cool-pacific' }
 ];
+
+export const BUDGET_CATEGORY_KEYS = Object.keys(CATEGORIES).filter((key) => key !== 'salary');
+
+export const MONTH_NAMES_PT = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro'
+];

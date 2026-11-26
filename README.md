@@ -159,6 +159,7 @@ Classificações produzidas:
 | **Categorias** | Salário, Alimentação, Transporte, Saúde, Lazer, Educação, Contas, Compras, Investimento e Outro. |
 | **Busca, filtros e ordenação** | Pesquisa por texto, filtro por tipo e categoria e ordenação dos registros. |
 | **Meta mensal de gastos** | Limite definido, valor gasto, percentual atingido e situação da meta. |
+| **Orçamento por categoria (Frontend)** | Limites individuais por categoria e mês/ano salvos no `localStorage`, cálculo automático pelas despesas reais, barras de progresso, alertas (70% e 100%) e resumo no Dashboard. |
 | **Meta de investimentos** | Meta, total aportado, número de aportes, percentual atingido e valor restante, com feedback visual ao atingir a meta. |
 | **Gráficos** | Distribuição das despesas por categoria, desenhados com HTML5 Canvas 2D. |
 | **Exportação CSV** | Data, descrição, tipo, categoria e valor, em UTF-8 com BOM (abre corretamente no Excel). |
