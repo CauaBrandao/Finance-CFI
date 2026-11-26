@@ -11,10 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class TransactionService {
 
-    private final Map<String, TransactionDTO> transactionStore = new ConcurrentHashMap<>();
+    private final Map<String, TransactionDTO> transactionStore = Collections.synchronizedMap(new LinkedHashMap<>());
 
     public List<TransactionDTO> findAll() {
-        return new ArrayList<>(transactionStore.values());
+        synchronized (transactionStore) {
+            return new ArrayList<>(transactionStore.values());
+        }
     }
 
     public Optional<TransactionDTO> findById(String id) {
@@ -26,16 +28,20 @@ public class TransactionService {
             throw new InvalidFinancialDataException("A transação não pode ser nula.");
         }
         String id = (dto.id() != null && !dto.id().trim().isEmpty())
-                ? dto.id()
+                ? dto.id().trim()
                 : UUID.randomUUID().toString();
+
+        String normalizedDate = (dto.date() != null && !dto.date().isBlank())
+                ? dto.date().trim()
+                : java.time.LocalDate.now().toString();
 
         TransactionDTO newTransaction = new TransactionDTO(
                 id,
-                dto.description(),
+                dto.description().trim(),
                 dto.amount(),
-                dto.type(),
-                dto.category(),
-                dto.date() != null ? dto.date() : java.time.LocalDate.now().toString()
+                dto.type().trim(),
+                dto.category().trim(),
+                normalizedDate
         );
 
         transactionStore.put(id, newTransaction);
@@ -43,19 +49,26 @@ public class TransactionService {
     }
 
     public TransactionDTO update(String id, TransactionDTO dto) {
-        if (!transactionStore.containsKey(id)) {
-            throw new ResourceNotFoundException("Transação com ID '" + id + "' não encontrada para atualização.");
+        synchronized (transactionStore) {
+            TransactionDTO existing = transactionStore.get(id);
+            if (existing == null) {
+                throw new ResourceNotFoundException("Transação com ID '" + id + "' não encontrada para atualização.");
+            }
+            String normalizedDate = (dto.date() != null && !dto.date().isBlank())
+                    ? dto.date().trim()
+                    : existing.date();
+
+            TransactionDTO updated = new TransactionDTO(
+                    id,
+                    dto.description().trim(),
+                    dto.amount(),
+                    dto.type().trim(),
+                    dto.category().trim(),
+                    normalizedDate
+            );
+            transactionStore.put(id, updated);
+            return updated;
         }
-        TransactionDTO updated = new TransactionDTO(
-                id,
-                dto.description(),
-                dto.amount(),
-                dto.type(),
-                dto.category(),
-                dto.date()
-        );
-        transactionStore.put(id, updated);
-        return updated;
     }
 
     public void delete(String id) {

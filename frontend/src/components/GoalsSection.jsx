@@ -4,6 +4,7 @@ import { MOTIVATIONAL } from '../utils/constants';
 
 export const GoalsSection = ({ monthlyGoal, totalSpent, onSetGoal }) => {
   const [goalInput, setGoalInput] = useState(monthlyGoal ? String(monthlyGoal) : '');
+  const [goalError, setGoalError] = useState('');
 
   useEffect(() => {
     if (monthlyGoal > 0) {
@@ -13,9 +14,16 @@ export const GoalsSection = ({ monthlyGoal, totalSpent, onSetGoal }) => {
 
   const handleSet = () => {
     const val = parseFloat(goalInput);
-    if (!isNaN(val) && val > 0) {
-      onSetGoal(val);
+    if (Number.isNaN(val) || val < 0.01) {
+      setGoalError('Informe um limite mensal maior que R$ 0,00.');
+      return;
     }
+    if (val > 999999999.99) {
+      setGoalError('O limite mensal não pode exceder R$ 999.999.999,99.');
+      return;
+    }
+    setGoalError('');
+    onSetGoal(Number(val.toFixed(2)));
   };
 
   const hasGoal = monthlyGoal > 0;
@@ -62,15 +70,20 @@ export const GoalsSection = ({ monthlyGoal, totalSpent, onSetGoal }) => {
           type="number"
           id="monthlyGoal"
           placeholder="Defina seu limite (R$)"
-          min="0"
+          min="0.01"
           step="0.01"
           value={goalInput}
-          onChange={(e) => setGoalInput(e.target.value)}
+          onChange={(e) => {
+            setGoalInput(e.target.value);
+            if (goalError) setGoalError('');
+          }}
+          aria-invalid={Boolean(goalError)}
         />
-        <button id="setGoalBtn" className="btn-small" onClick={handleSet}>
+        <button id="setGoalBtn" type="button" className="btn-small" onClick={handleSet}>
           Definir
         </button>
       </div>
+      {goalError && <span className="field-error" style={{ display: 'block', marginBottom: '8px' }}>{goalError}</span>}
 
       <div className="goal-display" id="goalDisplay">
         <div className="goal-bar-container">

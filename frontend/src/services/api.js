@@ -1,38 +1,63 @@
-const BASE_URL = import.meta.env.VITE_API_URL || '/api';
-const DEFAULT_TIMEOUT_MS = 25000;
+const DEFAULT_TIMEOUT_MS = 42000;
 
-class ApiClient {
-  constructor(baseUrl = BASE_URL) {
-    this.baseUrl = baseUrl;
+export function resolveApiBaseUrl(env = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {}) {
+  const configured = typeof env?.VITE_API_URL === 'string'
+    ? env.VITE_API_URL.trim().replace(/\/+$/, '')
+    : '';
+
+  if (configured) {
+    return configured;
+  }
+
+  if (env?.DEV) {
+    return '/api';
+  }
+
+  return '';
+}
+
+export function extractApiErrorMessage(err) {
+  if (!err) {
+    return 'Erro desconhecido ao comunicar com o servidor.';
+  }
+  if (Array.isArray(err.data?.details) && err.data.details.length > 0) {
+    return `${err.message} (${err.data.details.join('; ')})`;
+  }
+  return err.message || 'Não foi possível completar a operação no servidor.';
+}
+
+export class ApiClient {
+  constructor(baseUrl = resolveApiBaseUrl()) {
+    this.baseUrl = typeof baseUrl === 'string' ? baseUrl.replace(/\/+$/, '') : '';
   }
 
   async request(endpoint, options = {}) {
+    if (!this.baseUrl) {
+      const configError = new Error('URL da API não configurada para produção (defina VITE_API_URL).');
+      configError.status = 0;
+      configError.isConfigError = true;
+      throw configError;
+    }
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), options.timeout || DEFAULT_TIMEOUT_MS);
+    const timeoutMs = options.timeout || DEFAULT_TIMEOUT_MS;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    const { timeout: _ignoredTimeout, headers: customHeaders, ...fetchOptions } = options;
 
     const config = {
+      ...fetchOptions,
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        ...options.headers
+        ...customHeaders
       },
-      signal: controller.signal,
-      ...options
+      signal: controller.signal
     };
 
-    // Tenta primeiro através do endpoint base configurado (/api com proxy do Vite ou URL configurada)
     try {
       return await this._executeFetch(`${this.baseUrl}${endpoint}`, config, timeoutId);
     } catch (err) {
-      // Se der falha de conexão usando a rota relativa /api, tenta fallback direto para http://localhost:8080/api
-      if (this.baseUrl === '/api' && (err.name === 'TypeError' || err.message?.includes('fetch') || err.message?.includes('NetworkError'))) {
-        try {
-          return await this._executeFetch(`http://localhost:8080/api${endpoint}`, config, timeoutId);
-        } catch (fallbackErr) {
-          clearTimeout(timeoutId);
-          throw fallbackErr;
-        }
-      }
       clearTimeout(timeoutId);
       throw err;
     }
@@ -42,6 +67,10 @@ class ApiClient {
     try {
       const response = await fetch(url, config);
       clearTimeout(timeoutId);
+
+      if (response.status === 204) {
+        return null;
+      }
 
       const contentType = response.headers.get('content-type');
       let data = null;
@@ -62,10 +91,17 @@ class ApiClient {
 
       return data;
     } catch (err) {
+      clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
-        const timeoutError = new Error('Tempo limite de resposta excedido. A IA ou o servidor demoraram para responder.');
+        const timeoutError = new Error('Tempo limite de resposta excedido. O servidor demorou mais que o esperado.');
         timeoutError.status = 504;
         throw timeoutError;
+      }
+      if (err.status === undefined && (err.name === 'TypeError' || err.message?.includes('fetch') || err.message?.includes('NetworkError'))) {
+        const networkError = new Error('Não foi possível conectar ao servidor da API. Verifique sua conexão ou se o serviço está disponível.');
+        networkError.status = 0;
+        networkError.isNetworkError = true;
+        throw networkError;
       }
       throw err;
     }

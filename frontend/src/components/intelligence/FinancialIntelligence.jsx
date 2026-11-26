@@ -8,7 +8,77 @@ import { ProblemCard } from './ProblemCard';
 import { ActionPlanCard } from './ActionPlanCard';
 import { InvestmentReadinessCard } from './InvestmentReadinessCard';
 
-export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoal, cachedAnalysis, onSaveAnalysis, onLoadDemoData, showToast }) => {
+export function mapAnalysisError(err) {
+  const status = err?.status ?? 0;
+
+  if (err?.isConfigError) {
+    return {
+      status: 0,
+      message: 'A URL da API não está configurada para este ambiente. Contate o administrador da implantação.',
+      details: null
+    };
+  }
+
+  if (status === 400) {
+    const safeDetails = Array.isArray(err?.data?.details) && err.data.details.length > 0
+      ? err.data.details.join('; ')
+      : null;
+    return {
+      status: 400,
+      message: err?.data?.message || 'Os dados financeiros enviados para análise são inválidos.',
+      details: safeDetails
+    };
+  }
+
+  if (status === 429) {
+    return {
+      status: 429,
+      message: 'Limite temporário de requisições da IA atingido. Aguarde alguns instantes antes de tentar novamente.',
+      details: null
+    };
+  }
+
+  if (status === 503) {
+    return {
+      status: 503,
+      message: 'O serviço de Inteligência Artificial está temporariamente indisponível. Tente novamente em instantes.',
+      details: null
+    };
+  }
+
+  if (status === 504) {
+    return {
+      status: 504,
+      message: 'Tempo limite de resposta excedido. A análise demorou mais que o esperado.',
+      details: null
+    };
+  }
+
+  if (status === 0 || err?.isNetworkError) {
+    return {
+      status: 0,
+      message: 'Não foi possível conectar ao servidor da API. Verifique sua conexão com a internet ou tente novamente em instantes.',
+      details: null
+    };
+  }
+
+  return {
+    status: status || 500,
+    message: 'Não foi possível concluir a análise financeira no momento. Tente novamente mais tarde.',
+    details: null
+  };
+}
+
+export const FinancialIntelligence = ({
+  transactions,
+  monthlyGoal,
+  investmentGoal,
+  cachedAnalysis,
+  onSaveAnalysis,
+  onLoadDemoData,
+  isLoadingDemo = false,
+  showToast
+}) => {
   const [analysis, setAnalysis] = useState(cachedAnalysis);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -17,6 +87,8 @@ export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoa
   const stats = calculateStats(transactions);
 
   const handleRequestAnalysis = async () => {
+    if (loading) return;
+
     if (transactions.length === 0) {
       showToast('Adicione pelo menos uma transação antes de solicitar a análise.', 'warning');
       return;
@@ -36,28 +108,9 @@ export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoa
       }
       showToast('Análise de Inteligência Financeira concluída com sucesso!', 'success');
     } catch (err) {
-      console.error('Erro ao consultar análise de IA:', err);
-      let errorMsg = 'Não foi possível completar a análise no momento.';
-      let errorDetails = err.message;
-
-      if (err.status === 400) {
-        errorMsg = 'Dados financeiros inválidos ou vazios enviados para análise.';
-      } else if (err.status === 429) {
-        errorMsg = 'Limite temporário de requisições da IA atingido. Aguarde alguns instantes.';
-      } else if (err.status === 503) {
-        errorMsg = 'O serviço de Inteligência Artificial do Google Gemini está temporariamente indisponível.';
-      } else if (err.status === 504) {
-        errorMsg = 'Tempo limite de resposta excedido. O processamento demorou mais que o esperado.';
-      } else if (!err.status || err.message?.includes('NetworkError') || err.message?.includes('Failed to fetch') || err.message?.includes('fetch')) {
-        errorMsg = 'Não foi possível conectar ao servidor backend (Spring Boot na porta 8080). Certifique-se de que o backend está iniciado com mvn spring-boot:run.';
-      }
-
-      setError({
-        status: err.status || 500,
-        message: errorMsg,
-        details: errorDetails
-      });
-      showToast(errorMsg, 'error');
+      const mapped = mapAnalysisError(err);
+      setError(mapped);
+      showToast(mapped.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -92,6 +145,16 @@ export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoa
           </svg>
           {loading ? 'Analisando...' : 'Solicitar Análise com IA'}
         </button>
+      </div>
+
+      {/* Aviso de transparência e caráter informativo */}
+      <div className="readiness-disclaimer" role="note">
+        <span>ℹ️</span>
+        <span>
+          <strong>Caráter Informativo:</strong> A análise por IA tem finalidade exclusivamente educativa e de
+          organização orçamentária pessoal. Os cálculos financeiros são determinísticos, mas as interpretações geradas
+          não constituem garantia de resultado financeiro nem consultoria profissional.
+        </span>
       </div>
 
       {/* Métricas Determinísticas Consolidadas (Base do Backend) */}
@@ -130,15 +193,19 @@ export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoa
 
       {/* Tratamento de Erros e Resiliência */}
       {error && !loading && (
-        <div className="ai-error-box">
+        <div className="ai-error-box" role="alert">
           <div className="error-header">
             <span>⚠️</span>
-            <span>Falha na Análise (HTTP {error.status})</span>
+            <span>
+              {error.status > 0
+                ? `Falha na Análise (HTTP ${error.status})`
+                : 'Falha de Comunicação com a API'}
+            </span>
           </div>
           <p>{error.message}</p>
-          {error.details && <span className="error-details">Detalhes técnicos: {error.details}</span>}
+          {error.details && <span className="error-details">Detalhes: {error.details}</span>}
           <div style={{ marginTop: '8px' }}>
-            <button className="btn-secondary" onClick={handleRequestAnalysis}>
+            <button className="btn-secondary" onClick={handleRequestAnalysis} disabled={loading}>
               Tentar Novamente
             </button>
           </div>
@@ -176,7 +243,7 @@ export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoa
             <button
               className="btn-primary"
               onClick={handleRequestAnalysis}
-              disabled={transactions.length === 0}
+              disabled={loading || transactions.length === 0}
             >
               Começar Análise Agora
             </button>
@@ -185,9 +252,10 @@ export const FinancialIntelligence = ({ transactions, monthlyGoal, investmentGoa
               <button
                 className="btn-secondary"
                 onClick={onLoadDemoData}
+                disabled={isLoadingDemo}
                 style={{ borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
               >
-                📊 Carregar Cenário de Teste / Apresentação
+                {isLoadingDemo ? 'Carregando Cenário...' : '📊 Carregar Cenário de Teste / Apresentação'}
               </button>
             )}
           </div>

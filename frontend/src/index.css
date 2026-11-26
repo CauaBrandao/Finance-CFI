@@ -2085,3 +2085,53 @@ header {
     }
 }
 
+/* Estados de validação, carregamento e erro do CRUD integrado */
+.field-error {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--expense-color);
+}
+
+.char-counter {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.form-error-banner {
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--expense-bg);
+    border: 1px solid rgba(255, 107, 107, 0.4);
+    color: var(--expense-color);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.tx-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 36px 16px;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled,
+.btn-small:disabled,
+.edit-btn:disabled,
+.delete-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+

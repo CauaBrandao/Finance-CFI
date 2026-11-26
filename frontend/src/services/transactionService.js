@@ -1,7 +1,8 @@
-import { api } from './api';
+import { api } from './api.js';
+
+const CRUD_TIMEOUT_MS = 15000;
 
 const STORAGE_KEYS = {
-  TRANSACTIONS: 'transactions',
   MONTHLY_GOAL: 'monthlyGoal',
   INVESTMENT_GOAL: 'investmentGoal',
   THEME: 'theme',
@@ -10,22 +11,21 @@ const STORAGE_KEYS = {
 };
 
 export const transactionService = {
-  loadTransactions() {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      console.error('Falha ao ler transações do LocalStorage:', e);
-      return [];
-    }
+  async getAll() {
+    const data = await api.get('/transactions', { timeout: CRUD_TIMEOUT_MS });
+    return Array.isArray(data) ? data : [];
   },
 
-  saveTransactions(transactions) {
-    try {
-      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
-    } catch (e) {
-      console.error('Falha ao salvar transações no LocalStorage:', e);
-    }
+  async create(transaction) {
+    return api.post('/transactions', transaction, { timeout: CRUD_TIMEOUT_MS });
+  },
+
+  async update(id, transaction) {
+    return api.put(`/transactions/${encodeURIComponent(id)}`, transaction, { timeout: CRUD_TIMEOUT_MS });
+  },
+
+  async remove(id) {
+    return api.delete(`/transactions/${encodeURIComponent(id)}`, { timeout: CRUD_TIMEOUT_MS });
   },
 
   loadGoals() {

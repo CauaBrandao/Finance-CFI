@@ -4,6 +4,7 @@ import { MOTIVATIONAL } from '../utils/constants';
 
 export const InvestmentGoalSection = ({ investmentGoal, totalInvested, investmentCount, onSetGoal }) => {
   const [goalInput, setGoalInput] = useState(investmentGoal ? String(investmentGoal) : '');
+  const [goalError, setGoalError] = useState('');
 
   useEffect(() => {
     if (investmentGoal > 0) {
@@ -13,9 +14,16 @@ export const InvestmentGoalSection = ({ investmentGoal, totalInvested, investmen
 
   const handleSet = () => {
     const val = parseFloat(goalInput);
-    if (!isNaN(val) && val > 0) {
-      onSetGoal(val);
+    if (Number.isNaN(val) || val < 0.01) {
+      setGoalError('Informe uma meta de investimento maior que R$ 0,00.');
+      return;
     }
+    if (val > 999999999.99) {
+      setGoalError('A meta de investimento não pode exceder R$ 999.999.999,99.');
+      return;
+    }
+    setGoalError('');
+    onSetGoal(Number(val.toFixed(2)));
   };
 
   const hasGoal = investmentGoal > 0;
@@ -60,15 +68,20 @@ export const InvestmentGoalSection = ({ investmentGoal, totalInvested, investmen
           type="number"
           id="investmentGoal"
           placeholder="Meta mensal investimento (R$)"
-          min="0"
+          min="0.01"
           step="0.01"
           value={goalInput}
-          onChange={(e) => setGoalInput(e.target.value)}
+          onChange={(e) => {
+            setGoalInput(e.target.value);
+            if (goalError) setGoalError('');
+          }}
+          aria-invalid={Boolean(goalError)}
         />
-        <button id="setInvestmentBtn" className="btn-small btn-investment" onClick={handleSet}>
+        <button id="setInvestmentBtn" type="button" className="btn-small btn-investment" onClick={handleSet}>
           Definir
         </button>
       </div>
+      {goalError && <span className="field-error" style={{ display: 'block', marginBottom: '8px' }}>{goalError}</span>}
 
       <div className="investment-display" id="investmentDisplay">
         <div className="goal-bar-container">

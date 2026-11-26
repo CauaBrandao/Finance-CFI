@@ -1,4 +1,5 @@
-import { CATEGORIES } from './constants';
+import { CATEGORIES } from './constants.js';
+import { formatIsoDateOnly } from './formatters.js';
 
 export const calculateTotals = (transactions = []) => {
   const totals = transactions.reduce(
@@ -38,6 +39,7 @@ export const calculateStats = (transactions = []) => {
   return {
     biggestExpense: biggest ? Number(biggest.amount) : 0,
     biggestExpenseDescription: biggest ? biggest.description : '',
+    biggestExpenseCategory: biggest ? biggest.category : '',
     avgDailyExpense: avgDaily,
     totalTransactions: transactions.length,
     daysTracked: uniqueDays.length
@@ -79,45 +81,50 @@ export const buildFinancialContext = (transactions = [], monthlyGoal = 0, invest
 
   const currentYearMonth = new Date().toISOString().slice(0, 7);
 
+  const sortedRecent = [...transactions]
+    .sort((a, b) => (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0))
+    .slice(0, 30);
+
   return {
     periodo: currentYearMonth,
-    receitaTotal: totals.income,
-    despesaTotal: totals.expense,
-    saldo: totals.balance,
+    receitaTotal: Number(totals.income.toFixed(2)),
+    despesaTotal: Number(totals.expense.toFixed(2)),
+    saldo: Number(totals.balance.toFixed(2)),
     taxaPoupancaPercentual: Number(totals.savingsRate),
     gastoMedioDiario: Number(stats.avgDailyExpense.toFixed(2)),
     diasRastreados: stats.daysTracked,
     maiorDespesa: {
       descricao: stats.biggestExpenseDescription,
-      valor: stats.biggestExpense
+      valor: stats.biggestExpense,
+      categoria: stats.biggestExpenseCategory || 'other'
     },
     metaGastosMensal: {
       limite: monthlyGoal,
-      gastoAtual: totals.expense,
+      gastoAtual: Number(totals.expense.toFixed(2)),
       percentualAtingido: monthlyGoal > 0 ? Number(((totals.expense / monthlyGoal) * 100).toFixed(1)) : 0,
-      restante: Math.max(0, monthlyGoal - totals.expense)
+      restante: Math.max(0, Number((monthlyGoal - totals.expense).toFixed(2)))
     },
     metaInvestimentoMensal: {
       meta: investmentGoal,
-      totalAportado: totalInvested,
+      totalAportado: Number(totalInvested.toFixed(2)),
       quantidadeAportes: investmentTxs.length,
       percentualAtingido: investmentGoal > 0 ? Number(((totalInvested / investmentGoal) * 100).toFixed(1)) : 0,
-      restante: Math.max(0, investmentGoal - totalInvested)
+      restante: Math.max(0, Number((investmentGoal - totalInvested).toFixed(2)))
     },
     categoriasDespesa: categories.map((c) => ({
       categoria: c.label,
       chave: c.categoryKey,
-      totalGasto: c.total,
+      totalGasto: Number(c.total.toFixed(2)),
       percentualDasDespesas: c.percent,
       percentualDaReceita: totals.income > 0 ? Number(((c.total / totals.income) * 100).toFixed(1)) : 0
     })),
-    ultimasTransacoes: transactions.slice(0, 30).map((t) => ({
+    ultimasTransacoes: sortedRecent.map((t) => ({
       id: t.id,
       description: t.description,
       amount: Number(t.amount),
       type: t.type,
       category: t.category,
-      date: t.date ? t.date.split('T')[0] : ''
+      date: formatIsoDateOnly(t.date)
     }))
   };
 };

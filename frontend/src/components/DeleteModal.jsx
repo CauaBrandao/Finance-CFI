@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const DeleteModal = ({ isOpen, transactionDescription, onConfirm, onCancel }) => {
+export const DeleteModal = ({ isOpen, transactionDescription, onConfirm, onCancel, isDeleting = false }) => {
   if (!isOpen) return null;
 
   return (
@@ -18,11 +18,11 @@ export const DeleteModal = ({ isOpen, transactionDescription, onConfirm, onCance
           Deseja realmente excluir {transactionDescription ? `"${transactionDescription}"` : 'esta transação'}?
         </p>
         <div className="modal-actions">
-          <button className="btn-secondary" id="cancelDeleteBtn" onClick={onCancel}>
+          <button className="btn-secondary" id="cancelDeleteBtn" onClick={onCancel} disabled={isDeleting}>
             Cancelar
           </button>
-          <button className="btn-danger" id="confirmDeleteBtn" onClick={onConfirm}>
-            Excluir
+          <button className="btn-danger" id="confirmDeleteBtn" onClick={onConfirm} disabled={isDeleting}>
+            {isDeleting ? 'Excluindo...' : 'Excluir'}
           </button>
         </div>
       </div>

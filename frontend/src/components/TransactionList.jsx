@@ -2,7 +2,15 @@ import React, { useState, useMemo } from 'react';
 import { CATEGORIES } from '../utils/constants';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
-export const TransactionList = ({ transactions, onEdit, onDelete }) => {
+export const TransactionList = ({
+  transactions,
+  onEdit,
+  onDelete,
+  isLoading = false,
+  error = null,
+  onRetry,
+  isBusy = false
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -15,7 +23,7 @@ export const TransactionList = ({ transactions, onEdit, onDelete }) => {
       const term = searchTerm.toLowerCase().trim();
       list = list.filter((t) => {
         const catLabel = CATEGORIES[t.category]?.label?.toLowerCase() || '';
-        return t.description.toLowerCase().includes(term) || catLabel.includes(term);
+        return (t.description || '').toLowerCase().includes(term) || catLabel.includes(term);
       });
     }
 
@@ -118,7 +126,27 @@ export const TransactionList = ({ transactions, onEdit, onDelete }) => {
         </div>
       </div>
 
-      {filteredTransactions.length === 0 ? (
+      {isLoading ? (
+        <div className="tx-loading-state" role="status" aria-live="polite">
+          <div className="ai-spinner" aria-hidden="true"></div>
+          <p>Carregando transações da API...</p>
+        </div>
+      ) : error ? (
+        <div className="ai-error-box" role="alert">
+          <div className="error-header">
+            <span>⚠️</span>
+            <span>Não foi possível carregar as transações</span>
+          </div>
+          <p>{error}</p>
+          {onRetry && (
+            <div style={{ marginTop: '8px' }}>
+              <button className="btn-secondary" onClick={onRetry}>
+                Tentar Novamente
+              </button>
+            </div>
+          )}
+        </div>
+      ) : filteredTransactions.length === 0 ? (
         <p id="emptyMessage">Nenhuma transação registrada ou correspondente aos filtros.</p>
       ) : (
         <ul id="transactionList" aria-live="polite">
@@ -149,6 +177,7 @@ export const TransactionList = ({ transactions, onEdit, onDelete }) => {
                   <button
                     className="edit-btn"
                     onClick={() => onEdit(t)}
+                    disabled={isBusy}
                     title="Editar transação"
                     aria-label="Editar"
                   >
@@ -161,6 +190,7 @@ export const TransactionList = ({ transactions, onEdit, onDelete }) => {
                   <button
                     className="delete-btn"
                     onClick={() => onDelete(t.id)}
+                    disabled={isBusy}
                     title="Remover transação"
                     aria-label="Remover"
                   >

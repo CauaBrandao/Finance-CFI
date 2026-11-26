@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
 import { PalettePanel } from './components/PalettePanel';
 import { MotivationalBanner } from './components/MotivationalBanner';
@@ -14,15 +14,19 @@ import { ToastContainer } from './components/ToastContainer';
 import { ConfettiCanvas } from './components/ConfettiCanvas';
 import { FinancialIntelligence } from './components/intelligence/FinancialIntelligence';
 
+import { extractApiErrorMessage } from './services/api';
 import { transactionService } from './services/transactionService';
 import { calculateTotals, calculateStats } from './utils/calculations';
 import { exportTransactionsToCSV } from './utils/exportCsv';
-import { randomItem, formatCurrency, generateId } from './utils/formatters';
+import { randomItem, formatCurrency } from './utils/formatters';
 import { MOTIVATIONAL } from './utils/constants';
 
 export const App = () => {
-  // Estado principal das transações e metas
+  // Estado principal das transações (fonte única: API REST) e metas
   const [transactions, setTransactions] = useState([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
+  const [transactionsError, setTransactionsError] = useState(null);
+
   const [monthlyGoal, setMonthlyGoal] = useState(0);
   const [investmentGoal, setInvestmentGoal] = useState(0);
 
@@ -34,9 +38,13 @@ export const App = () => {
   const [motivationalMessage, setMotivationalMessage] = useState('Comece a registrar suas transações!');
   const [confettiTrigger, setConfettiTrigger] = useState(0);
 
-  // Estados de edição e exclusão
+  // Estados de edição, exclusão e envio assíncrono
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [isSubmittingTx, setIsSubmittingTx] = useState(false);
+  const [submitTxError, setSubmitTxError] = useState('');
   const [deleteModalState, setDeleteModalState] = useState({ isOpen: false, id: null, description: '' });
+  const [isDeletingTx, setIsDeletingTx] = useState(false);
+  const [isLoadingDemo, setIsLoadingDemo] = useState(false);
 
   // Notificações Toast
   const [toasts, setToasts] = useState([]);
@@ -44,14 +52,35 @@ export const App = () => {
   // Análise de IA em cache
   const [cachedAnalysis, setCachedAnalysis] = useState(null);
 
-  // Carregamento inicial do LocalStorage
+  const showToast = useCallback((message, type = 'info') => {
+    const id = Date.now().toString() + Math.random().toString(36).slice(2);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3500);
+  }, []);
+
+  const fetchTransactions = useCallback(async () => {
+    setTransactionsLoading(true);
+    setTransactionsError(null);
+    try {
+      const data = await transactionService.getAll();
+      setTransactions(data);
+    } catch (err) {
+      const msg = extractApiErrorMessage(err);
+      setTransactionsError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setTransactionsLoading(false);
+    }
+  }, [showToast]);
+
+  // Carregamento inicial: preferências locais + transações via API REST
   useEffect(() => {
-    const loadedTransactions = transactionService.loadTransactions();
     const { monthlyGoal: mGoal, investmentGoal: iGoal } = transactionService.loadGoals();
     const { theme: savedTheme, palette: savedPalette } = transactionService.loadPreferences();
     const lastAnalysis = transactionService.loadCachedAnalysis();
 
-    setTransactions(loadedTransactions);
     setMonthlyGoal(mGoal);
     setInvestmentGoal(iGoal);
     setTheme(savedTheme);
@@ -69,15 +98,9 @@ export const App = () => {
     } else {
       document.documentElement.removeAttribute('data-palette');
     }
-  }, []);
 
-  const showToast = (message, type = 'info') => {
-    const id = Date.now().toString() + Math.random().toString(36).slice(2);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
-  };
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const triggerConfetti = () => {
     setConfettiTrigger((prev) => prev + 1);
@@ -126,53 +149,78 @@ export const App = () => {
     triggerConfetti();
   };
 
-  // CRUD de Transações
-  const handleAddOrUpdateTransaction = (transactionData) => {
-    if (editingTransaction) {
-      const updated = transactions.map((t) =>
-        t.id === editingTransaction.id ? { ...t, ...transactionData } : t
-      );
-      setTransactions(updated);
-      transactionService.saveTransactions(updated);
-      setEditingTransaction(null);
-      showToast('Transação atualizada!', 'info');
-    } else {
-      const newTx = {
-        id: generateId(),
-        ...transactionData
-      };
-      const updated = [...transactions, newTx];
-      setTransactions(updated);
-      transactionService.saveTransactions(updated);
+  // CRUD de Transações integrado ao Backend REST
+  const handleAddOrUpdateTransaction = async (transactionData) => {
+    if (isSubmittingTx) return false;
+    setIsSubmittingTx(true);
+    setSubmitTxError('');
 
-      const isIncome = newTx.type === 'income';
-      setMotivationalMessage(randomItem(isIncome ? MOTIVATIONAL.income : MOTIVATIONAL.expense));
-      showToast(isIncome ? 'Entrada adicionada!' : 'Saída registrada.', isIncome ? 'success' : 'info');
+    try {
+      if (editingTransaction) {
+        await transactionService.update(editingTransaction.id, transactionData);
+        const refreshed = await transactionService.getAll();
+        setTransactions(refreshed);
+        setEditingTransaction(null);
+        showToast('Transação atualizada!', 'info');
+      } else {
+        const created = await transactionService.create(transactionData);
+        const refreshed = await transactionService.getAll();
+        setTransactions(refreshed);
 
-      // Verificação de estouro de gastos ou atingimento de investimento
-      const expenses = updated.filter((t) => t.type === 'expense');
-      const totalSpent = expenses.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-      if (monthlyGoal > 0 && totalSpent >= monthlyGoal) {
-        showToast('Média de gastos estourada! Revise seus gastos.', 'error');
+        const isIncome = created.type === 'income';
+        setMotivationalMessage(randomItem(isIncome ? MOTIVATIONAL.income : MOTIVATIONAL.expense));
+        showToast(isIncome ? 'Entrada adicionada!' : 'Saída registrada.', isIncome ? 'success' : 'info');
+
+        // Verificação de estouro de gastos ou atingimento de investimento
+        const expenses = refreshed.filter((t) => t.type === 'expense');
+        const totalSpent = expenses.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        if (monthlyGoal > 0 && totalSpent >= monthlyGoal) {
+          showToast('Média de gastos estourada! Revise seus gastos.', 'error');
+        }
+
+        const investmentTxs = refreshed.filter((t) => t.type === 'expense' && t.category === 'investment');
+        const totalInvested = investmentTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        if (investmentGoal > 0 && totalInvested >= investmentGoal) {
+          showToast('Meta de investimento atingida! 🎉', 'success');
+          triggerConfetti();
+        }
       }
-
-      const investmentTxs = updated.filter((t) => t.type === 'expense' && t.category === 'investment');
-      const totalInvested = investmentTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-      if (investmentGoal > 0 && totalInvested >= investmentGoal) {
-        showToast('Meta de investimento atingida! 🎉', 'success');
-        triggerConfetti();
-      }
+      setTransactionsError(null);
+      return true;
+    } catch (err) {
+      const msg = extractApiErrorMessage(err);
+      setSubmitTxError(msg);
+      showToast(msg, 'error');
+      return false;
+    } finally {
+      setIsSubmittingTx(false);
     }
   };
 
-  const handleConfirmDelete = () => {
-    if (deleteModalState.id) {
-      const updated = transactions.filter((t) => t.id !== deleteModalState.id);
-      setTransactions(updated);
-      transactionService.saveTransactions(updated);
+  const handleConfirmDelete = async () => {
+    if (!deleteModalState.id || isDeletingTx) return;
+
+    setIsDeletingTx(true);
+    try {
+      await transactionService.remove(deleteModalState.id);
+      const refreshed = await transactionService.getAll();
+      setTransactions(refreshed);
+      if (editingTransaction?.id === deleteModalState.id) {
+        setEditingTransaction(null);
+      }
       showToast('Transação removida.', 'warning');
+      setDeleteModalState({ isOpen: false, id: null, description: '' });
+    } catch (err) {
+      const msg = extractApiErrorMessage(err);
+      showToast(msg, 'error');
+      if (err.status === 404) {
+        const refreshed = await transactionService.getAll().catch(() => null);
+        if (refreshed) setTransactions(refreshed);
+        setDeleteModalState({ isOpen: false, id: null, description: '' });
+      }
+    } finally {
+      setIsDeletingTx(false);
     }
-    setDeleteModalState({ isOpen: false, id: null, description: '' });
   };
 
   const handleExportCsv = () => {
@@ -184,30 +232,46 @@ export const App = () => {
     }
   };
 
-  const handleLoadDemoData = () => {
+  const handleLoadDemoData = async () => {
+    if (isLoadingDemo) return;
+    setIsLoadingDemo(true);
+
     const demoTransactions = [
-      { id: 'demo_1', description: 'Salário Mensal', amount: 4200, type: 'income', category: 'salary', date: '2026-09-05' },
-      { id: 'demo_2', description: 'Freelance Web Design', amount: 800, type: 'income', category: 'other', date: '2026-09-15' },
-      { id: 'demo_3', description: 'Supermercado Mensal', amount: 980, type: 'expense', category: 'food', date: '2026-09-06' },
-      { id: 'demo_4', description: 'Aluguel & Condomínio', amount: 1350, type: 'expense', category: 'bills', date: '2026-09-08' },
-      { id: 'demo_5', description: 'Combustível do Mês', amount: 380, type: 'expense', category: 'transport', date: '2026-09-10' },
-      { id: 'demo_6', description: 'Restaurantes & Delivery', amount: 430, type: 'expense', category: 'food', date: '2026-09-12' },
-      { id: 'demo_7', description: 'Plano de Saúde & Farmácia', amount: 260, type: 'expense', category: 'health', date: '2026-09-14' },
-      { id: 'demo_8', description: 'Streaming & Lazer', amount: 190, type: 'expense', category: 'leisure', date: '2026-09-18' },
-      { id: 'demo_9', description: 'Curso Online Especialização', amount: 150, type: 'expense', category: 'education', date: '2026-09-20' },
-      { id: 'demo_10', description: 'Aporte Tesouro Direto Selic', amount: 350, type: 'expense', category: 'investment', date: '2026-09-22' }
+      { description: 'Salário Mensal', amount: 4200, type: 'income', category: 'salary', date: '2026-09-05' },
+      { description: 'Freelance Web Design', amount: 800, type: 'income', category: 'other', date: '2026-09-15' },
+      { description: 'Supermercado Mensal', amount: 980, type: 'expense', category: 'food', date: '2026-09-06' },
+      { description: 'Aluguel & Condomínio', amount: 1350, type: 'expense', category: 'bills', date: '2026-09-08' },
+      { description: 'Combustível do Mês', amount: 380, type: 'expense', category: 'transport', date: '2026-09-10' },
+      { description: 'Restaurantes & Delivery', amount: 430, type: 'expense', category: 'food', date: '2026-09-12' },
+      { description: 'Plano de Saúde & Farmácia', amount: 260, type: 'expense', category: 'health', date: '2026-09-14' },
+      { description: 'Streaming & Lazer', amount: 190, type: 'expense', category: 'leisure', date: '2026-09-18' },
+      { description: 'Curso Online Especialização', amount: 150, type: 'expense', category: 'education', date: '2026-09-20' },
+      { description: 'Aporte Tesouro Direto Selic', amount: 350, type: 'expense', category: 'investment', date: '2026-09-22' }
     ];
-    setTransactions(demoTransactions);
-    transactionService.saveTransactions(demoTransactions);
-    if (!monthlyGoal) {
-      setMonthlyGoal(3800);
-      transactionService.saveMonthlyGoal(3800);
+
+    try {
+      for (const tx of demoTransactions) {
+        await transactionService.create(tx);
+      }
+      const refreshed = await transactionService.getAll();
+      setTransactions(refreshed);
+      setTransactionsError(null);
+
+      if (!monthlyGoal) {
+        setMonthlyGoal(3800);
+        transactionService.saveMonthlyGoal(3800);
+      }
+      if (!investmentGoal) {
+        setInvestmentGoal(500);
+        transactionService.saveInvestmentGoal(500);
+      }
+      showToast('Cenário financeiro de demonstração carregado na API com sucesso!', 'success');
+    } catch (err) {
+      const msg = extractApiErrorMessage(err);
+      showToast(`Falha ao carregar cenário na API: ${msg}`, 'error');
+    } finally {
+      setIsLoadingDemo(false);
     }
-    if (!investmentGoal) {
-      setInvestmentGoal(500);
-      transactionService.saveInvestmentGoal(500);
-    }
-    showToast('Cenário financeiro de demonstração carregado com sucesso!', 'success');
   };
 
   // Totais e Métricas
@@ -231,8 +295,13 @@ export const App = () => {
       <DeleteModal
         isOpen={deleteModalState.isOpen}
         transactionDescription={deleteModalState.description}
+        isDeleting={isDeletingTx}
         onConfirm={handleConfirmDelete}
-        onCancel={() => setDeleteModalState({ isOpen: false, id: null, description: '' })}
+        onCancel={() => {
+          if (!isDeletingTx) {
+            setDeleteModalState({ isOpen: false, id: null, description: '' });
+          }
+        }}
       />
 
       <div className="container">
@@ -290,8 +359,13 @@ export const App = () => {
             <div className="two-col">
               <TransactionForm
                 editingTransaction={editingTransaction}
+                isSubmitting={isSubmittingTx}
+                submitError={submitTxError}
                 onSubmit={handleAddOrUpdateTransaction}
-                onCancelEdit={() => setEditingTransaction(null)}
+                onCancelEdit={() => {
+                  setEditingTransaction(null);
+                  setSubmitTxError('');
+                }}
               />
 
               <section className="goals-section glass">
@@ -319,10 +393,17 @@ export const App = () => {
               palette={palette}
             />
 
-            {/* Lista de Transações com Busca, Filtros e Ordenação */}
+            {/* Lista de Transações com Busca, Filtros, Ordenação e Estados de API */}
             <TransactionList
               transactions={transactions}
-              onEdit={(tx) => setEditingTransaction(tx)}
+              isLoading={transactionsLoading}
+              error={transactionsError}
+              onRetry={fetchTransactions}
+              isBusy={isSubmittingTx || isDeletingTx || isLoadingDemo}
+              onEdit={(tx) => {
+                setSubmitTxError('');
+                setEditingTransaction(tx);
+              }}
               onDelete={(id) => {
                 const tx = transactions.find((t) => t.id === id);
                 setDeleteModalState({
@@ -345,6 +426,7 @@ export const App = () => {
               transactionService.saveCachedAnalysis(res);
             }}
             onLoadDemoData={handleLoadDemoData}
+            isLoadingDemo={isLoadingDemo}
             showToast={showToast}
           />
         )}

@@ -5,7 +5,9 @@ export const formatCurrency = (value) => {
 
 export const formatDate = (dateStr) => {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
+  const normalized = dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`;
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 };
 
