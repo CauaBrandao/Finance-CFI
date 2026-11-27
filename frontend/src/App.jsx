@@ -41,6 +41,7 @@ export const App = () => {
   const [motivationalMessage, setMotivationalMessage] = useState('Comece a registrar suas transações!');
 
   const [editingTransaction, setEditingTransaction] = useState(null);
+  const [editRequestKey, setEditRequestKey] = useState(0);
   const [isSubmittingTx, setIsSubmittingTx] = useState(false);
   const [submitTxError, setSubmitTxError] = useState('');
   const [deleteModalState, setDeleteModalState] = useState({ isOpen: false, id: null, description: '' });
@@ -437,6 +438,7 @@ export const App = () => {
             <div className="two-col">
               <TransactionForm
                 editingTransaction={editingTransaction}
+                editRequestKey={editRequestKey}
                 isSubmitting={isSubmittingTx}
                 submitError={submitTxError}
                 onSubmit={handleAddOrUpdateTransaction}
@@ -489,6 +491,7 @@ export const App = () => {
               onEdit={(tx) => {
                 setSubmitTxError('');
                 setEditingTransaction(tx);
+                setEditRequestKey((k) => k + 1);
               }}
               onDelete={(id) => {
                 const tx = transactions.find((t) => t.id === id);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CATEGORIES } from '../utils/constants';
 
 const MAX_DESCRIPTION_LENGTH = 120;
@@ -45,8 +45,12 @@ export const TransactionForm = ({
   editingTransaction,
   onCancelEdit,
   isSubmitting = false,
-  submitError = ''
+  submitError = '',
+  editRequestKey = 0
 }) => {
+  const sectionRef = useRef(null);
+  const descriptionRef = useRef(null);
+  const [isHighlighted, setIsHighlighted] = useState(false);
   const todayIso = () => new Date().toISOString().split('T')[0];
 
   const [description, setDescription] = useState('');
@@ -78,6 +82,32 @@ export const TransactionForm = ({
     }
   }, [editingTransaction]);
 
+  // Ao clicar em "Editar" na lista: rola até o formulário, foca a descrição e destaca o card.
+  // Usa editRequestKey para reagir mesmo quando a mesma transação é editada de novo.
+  useEffect(() => {
+    if (!editRequestKey || !sectionRef.current) return undefined;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    sectionRef.current.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+
+    const focusTimer = setTimeout(() => {
+      const input = descriptionRef.current;
+      if (input) {
+        input.focus({ preventScroll: true });
+        input.select();
+      }
+    }, reduceMotion ? 0 : 450);
+
+    setIsHighlighted(false);
+    const startTimer = setTimeout(() => setIsHighlighted(true), 20);
+    const endTimer = setTimeout(() => setIsHighlighted(false), 1800);
+
+    return () => {
+      clearTimeout(focusTimer);
+      clearTimeout(startTimer);
+      clearTimeout(endTimer);
+    };
+  }, [editRequestKey]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -107,7 +137,10 @@ export const TransactionForm = ({
   const isEditing = Boolean(editingTransaction);
 
   return (
-    <section className="form-section glass">
+    <section
+      ref={sectionRef}
+      className={`form-section glass${isEditing ? ' is-editing' : ''}${isHighlighted ? ' is-highlighted' : ''}`}
+    >
       <h2 id="formTitle">
         {isEditing ? (
           <>
@@ -142,6 +175,7 @@ export const TransactionForm = ({
           <input
             type="text"
             id="description"
+            ref={descriptionRef}
             maxLength={MAX_DESCRIPTION_LENGTH}
             value={description}
             disabled={isSubmitting}

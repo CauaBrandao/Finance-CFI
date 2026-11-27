@@ -695,6 +695,30 @@ header {
     color: var(--text-primary);
 }
 
+/* Formulário em modo edição: borda destacada + pulso ao chegar pelo botão "Editar" */
+.form-section {
+    scroll-margin-top: 20px;
+}
+
+.form-section.is-editing {
+    border-color: var(--accent-1);
+    box-shadow: 0 0 0 1px var(--accent-1), var(--shadow-md);
+}
+
+.form-section.is-highlighted {
+    animation: edit-pulse 1.6s ease-out;
+}
+
+@keyframes edit-pulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-1) 55%, transparent), var(--shadow-md); }
+    70% { box-shadow: 0 0 0 16px color-mix(in srgb, var(--accent-1) 0%, transparent), var(--shadow-md); }
+    100% { box-shadow: 0 0 0 1px var(--accent-1), var(--shadow-md); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .form-section.is-highlighted { animation: none; }
+}
+
 .form-section h2 svg,
 .goals-section h2 svg,
 .chart-section h2 svg,
