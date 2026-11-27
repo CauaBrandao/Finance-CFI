@@ -534,7 +534,7 @@ export const App = () => {
         {/* Rodapé da Aplicação */}
         <footer className="footer">
           <p>
-            CFI Finance — Inteligência Financeira Pessoal &bull; Cauã, Fernando &amp; Igor &bull; Projeto Integrado com Google Gemini
+            CFI Finance 2.0 — Inteligência Financeira Pessoal &bull; Cauã, Fernando &amp; Igor &bull; Projeto Integrado com Google Gemini
           </p>
         </footer>
       </div>

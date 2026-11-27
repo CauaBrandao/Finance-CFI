@@ -13,7 +13,7 @@ export const Header = ({ onTogglePalette, onToggleTheme, onExportCsv, currentThe
             <path d="M2 12l10 5 10-5" />
           </svg>
         </div>
-        <h1>CFI <span>Finance</span></h1>
+        <h1>CFI <span>Finance</span> <small className="version-badge" aria-label="versão 2.0">2.0</small></h1>
       </a>
 
       <div className="header-actions">

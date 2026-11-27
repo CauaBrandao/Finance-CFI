@@ -113,11 +113,23 @@
 }
 .lp-nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .lp-logo { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.15rem; }
-.lp-logo span:last-child {
+.lp-logo > span:not(.lp-logo-icon) {
   background: linear-gradient(135deg, var(--lp-violet-2), var(--lp-teal));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+.lp-version {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(135deg, var(--lp-violet), var(--lp-teal));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-1) 35%, transparent);
 }
 .lp-logo-icon {
   display: grid;

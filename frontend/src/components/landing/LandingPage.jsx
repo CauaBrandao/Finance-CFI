@@ -155,7 +155,7 @@ export const LandingPage = () => {
   };
 
   useEffect(() => {
-    document.title = 'CFI Finance — Inteligência Financeira Pessoal';
+    document.title = 'CFI Finance 2.0 — Inteligência Financeira Pessoal';
     const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -174,9 +174,9 @@ export const LandingPage = () => {
       {/* NAV */}
       <nav className={`lp-nav ${scrolled ? 'is-scrolled' : ''}`}>
         <div className="lp-container lp-nav-inner">
-          <a href="/" className="lp-logo" aria-label="CFI Finance — início">
+          <a href="/" className="lp-logo" aria-label="CFI Finance 2.0 — início">
             <span className="lp-logo-icon"><Icon d={ICONS.logo} size={20} /></span>
-            CFI <span>Finance</span>
+            CFI <span>Finance</span> <small className="lp-version">2.0</small>
           </a>
           <div className="lp-nav-links">
             <a href="#recursos">Recursos</a>
@@ -229,7 +229,7 @@ export const LandingPage = () => {
               Suas finanças, <span className="lp-gradient-text">explicadas</span> por inteligência artificial.
             </h1>
             <p className="lp-lead">
-              O CFI Finance organiza receitas e despesas, calcula seus indicadores com precisão e usa IA
+              O CFI Finance 2.0 organiza receitas e despesas, calcula seus indicadores com precisão e usa IA
               generativa para transformar números em diagnóstico, prioridades e um plano de ação claro.
             </p>
             <div className="lp-cta-row">
@@ -251,7 +251,7 @@ export const LandingPage = () => {
               </div>
               <img
                 src={isLight ? '/screenshots/05-tema-claro.png' : '/screenshots/01-dashboard.png'}
-                alt="Dashboard do CFI Finance com entradas, saídas, saldo e metas"
+                alt="Dashboard do CFI Finance 2.0 com entradas, saídas, saldo e metas"
               />
             </div>
             <div className="lp-float lp-float-1">
@@ -377,7 +377,7 @@ export const LandingPage = () => {
         <div className="lp-container">
           <div className="lp-section-head lp-reveal">
             <span className="lp-eyebrow">Telas</span>
-            <h2>Veja o CFI Finance em ação</h2>
+            <h2>Veja o CFI Finance 2.0 em ação</h2>
           </div>
           <div className="lp-gallery lp-reveal">
             <div className="lp-tabs" role="tablist">
@@ -438,7 +438,7 @@ export const LandingPage = () => {
             <p>Carregue o cenário de demonstração e gere sua primeira análise em segundos.</p>
             <div className="lp-cta-row lp-cta-center">
               <a href={APP_PATH} className="lp-btn lp-btn-light">
-                Abrir o CFI Finance <Icon d={ICONS.arrow} size={18} />
+                Abrir o CFI Finance 2.0 <Icon d={ICONS.arrow} size={18} />
               </a>
               <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="lp-btn lp-btn-outline-light">
                 <Icon d={ICONS.github} size={18} /> Código no GitHub
@@ -467,7 +467,7 @@ export const LandingPage = () => {
         <div className="lp-container lp-footer-inner">
           <a href="/" className="lp-logo">
             <span className="lp-logo-icon"><Icon d={ICONS.logo} size={18} /></span>
-            CFI <span>Finance</span>
+            CFI <span>Finance</span> <small className="lp-version">2.0</small>
           </a>
           <div className="lp-footer-links">
             <a href={APP_PATH}>Aplicação</a>

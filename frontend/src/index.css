@@ -391,6 +391,20 @@ header {
     background-clip: text;
 }
 
+.version-badge {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    vertical-align: middle;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-1) 35%, transparent);
+}
+
 .header-actions {
     display: flex;
     gap: 10px;
