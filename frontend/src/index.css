@@ -1281,6 +1281,12 @@ header {
     opacity: 1;
 }
 
+/* Nos cards de orçamento, editar/excluir ficam sempre visíveis (inclusive no celular) */
+.budget-card .transaction-actions {
+    opacity: 1;
+    flex-shrink: 0;
+}
+
 .transaction-actions button {
     width: 34px;
     height: 34px;
