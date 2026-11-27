@@ -725,7 +725,7 @@ Material complementar em [`docs/`](docs/):
 ## 👥 16. Equipe
 
 * **Cauã Brandão**
-* **Fernando**
+* **Fernando Siqueira**
 * **Igor Aldivan**
 
 ---

@@ -42,7 +42,7 @@ public class OpenApiConfig {
                                 """)
                         .version("2.0.0")
                         .contact(new Contact()
-                                .name("Cauã Brandão, Fernando & Igor Aldivan — CFI Finance Team")
+                                .name("Cauã Brandão, Fernando Siqueira & Igor Aldivan — CFI Finance Team")
                                 .email("cfi-finance@academic.local"))
                         .license(new License()
                                 .name("MIT License")

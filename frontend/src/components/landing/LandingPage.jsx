@@ -81,7 +81,7 @@ const STACK = [
   { name: 'Render + Docker', role: 'Backend' },
 ];
 
-const TEAM = ['Cauã Brandão', 'Fernando', 'Igor Aldivan'];
+const TEAM = ['Cauã Brandão', 'Fernando Siqueira', 'Igor Aldivan'];
 
 // Aplica tema/paleta no <html>, exatamente como o App faz, para compartilhar as preferências.
 const applyTheme = (theme) => {

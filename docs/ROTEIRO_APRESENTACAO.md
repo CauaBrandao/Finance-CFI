@@ -19,7 +19,7 @@
 ## Sequência de Slides e Fala Sugerida
 
 ### Slide 1 — Capa e Problema (0:00 – 1:00)
-- **Visual:** Título *CFI Finance — Inteligência Financeira Pessoal*, equipe (Cauã Brandão, Fernando, Igor Aldivan).
+- **Visual:** Título *CFI Finance — Inteligência Financeira Pessoal*, equipe (Cauã Brandão, Fernando Siqueira, Igor Aldivan).
 - **Fala sugerida:** *"Planilhas e apps comuns mostram números e gráficos, mas deixam o usuário sozinho para descobrir onde está errando. O CFI Finance transforma lançamentos financeiros em diagnóstico acionável."*
 
 ### Slide 2 — Solução e Categoria: Classificação / Análise (1:00 – 2:00)
